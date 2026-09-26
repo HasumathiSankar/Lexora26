@@ -1,0 +1,565 @@
+{
+  "users": [
+    {
+      "id": "usr_admin_01",
+      "email": "admin@lexora.edu",
+      "username": "admin",
+      "role": "admin",
+      "passwordHash": "0bf8f93aa9f9052c148c4f5524ce494a:cf8bf0586f61d7c13a404c95a59463a3d4b3387f317e91ee13c5ab4d8dabba206ceb45b40b5f93d91f0746987eb006643b3de7b52215c0af2b68db9ec693b12f",
+      "createdAt": "2026-09-26T07:19:19.550Z",
+      "updatedAt": "2026-09-26T07:19:19.551Z"
+    },
+    {
+      "id": "usr_stu_01",
+      "email": "arjun.mehta@bits-pilani.ac.in",
+      "username": "arjun_bits",
+      "role": "student",
+      "passwordHash": "e1ecb32e80536b14f77caaf6917df155:4bfece4f37e8bddd6810b89a887c574bc84c8d19fcbe3533e1d52309b7ebeaa981eb619aec5fb308c0cc234b3d6f220e8c21752709e5bfbbe4a8a885fb32ecf5",
+      "createdAt": "2026-09-26T07:19:19.552Z",
+      "updatedAt": "2026-09-26T07:19:19.552Z"
+    },
+    {
+      "id": "usr_1790413255538_d9ao",
+      "email": "jeethjerisildas2006@gmail.com",
+      "username": "jeethjerisildas2006",
+      "role": "student",
+      "passwordHash": "d47c201f5326d405f95057ec39ea2fca:b10933b4eccde1e76bf5866b973dad63c3448f34b08ced6901f3d5c9c555bbf52a02fc012fdde4156ccd8d69ab43400afff41e6728e49e291e9c0121a354c1ee",
+      "createdAt": "2026-09-26T09:00:55.542Z",
+      "updatedAt": "2026-09-26T09:00:55.542Z"
+    }
+  ],
+  "studentProfiles": [
+    {
+      "id": "prof_stu_01",
+      "userId": "usr_stu_01",
+      "fullName": "Arjun Mehta",
+      "collegeName": "BITS Pilani",
+      "department": "Computer Science & Information Systems",
+      "academicYear": "3rd Year",
+      "phoneNumber": "+91 98765 43210",
+      "registrationNumber": "LEX-2026-084",
+      "eligibilityStatus": "eligible",
+      "createdAt": "2026-09-26T07:19:19.552Z"
+    },
+    {
+      "id": "prof_1790413255542",
+      "userId": "usr_1790413255538_d9ao",
+      "fullName": "Jeeth J",
+      "collegeName": "Jansons",
+      "department": "AI&DS",
+      "academicYear": "3rd Year",
+      "phoneNumber": "8667525778",
+      "registrationNumber": "LEX-2026-102",
+      "eligibilityStatus": "eligible",
+      "createdAt": "2026-09-26T09:00:55.542Z"
+    }
+  ],
+  "adminProfiles": [
+    {
+      "id": "adm_prof_01",
+      "userId": "usr_admin_01",
+      "fullName": "Dr. Evelyn Vance",
+      "departmentOrOffice": "Chair, Inter-College Technical Board",
+      "permissions": [
+        "ALL"
+      ],
+      "createdAt": "2026-09-26T07:19:19.551Z"
+    }
+  ],
+  "rounds": [
+    {
+      "id": "round_1",
+      "roundNumber": 1,
+      "title": "Reverse Prompting",
+      "subtitle": "Target Reconstruction & System Intent Extraction",
+      "description": "Analyze a complex synthetic AI output and reverse-engineer the exact system prompt, constraints, role framing, and formatting directives needed to reproduce it deterministically.",
+      "instructions": "Examine the target benchmark output below. Construct a single comprehensive prompt that instructs an LLM to generate output matching the structure, tone, constraints, and specific technical parameters of the target output without extraneous conversational filler.",
+      "status": "PAUSED",
+      "durationMinutes": 30,
+      "maxAttempts": 2,
+      "timingMode": "individual",
+      "evaluationMethod": "ai_assisted",
+      "maxScore": 100,
+      "qualificationRules": "Top 70% of scoring participants qualify for Round 2. Minimum score: 60/100.",
+      "startTimestamp": "2026-09-26T07:19:49.926Z",
+      "endTimestamp": null,
+      "isResultsPublished": true,
+      "resultsPublishedAt": "2026-09-26T07:20:39.426Z",
+      "strictTabSwitchDisqualification": true,
+      "maxTabSwitchWarnings": 2
+    },
+    {
+      "id": "round_2",
+      "roundNumber": 2,
+      "title": "Prompt Compression",
+      "subtitle": "Extreme Token Economy & Lossless Distillation",
+      "description": "Distill a sprawling 1,200-word enterprise requirement document into a hyper-condensed prompt under 180 words while retaining 100% of functional requirements and negative constraints.",
+      "instructions": "Given the extensive specification for a distributed microservice audit logger, engineer a high-density prompt strictly under 180 words/tokens that produces the exact required output schema without losing a single edge-case handling constraint.",
+      "status": "LOCKED",
+      "durationMinutes": 25,
+      "maxAttempts": 2,
+      "timingMode": "individual",
+      "evaluationMethod": "ai_assisted",
+      "maxScore": 100,
+      "qualificationRules": "Top 50% of participants qualify for Round 3. Strict token ceiling enforced.",
+      "startTimestamp": null,
+      "endTimestamp": null,
+      "isResultsPublished": false,
+      "resultsPublishedAt": null,
+      "strictTabSwitchDisqualification": true,
+      "maxTabSwitchWarnings": 2
+    },
+    {
+      "id": "round_3",
+      "roundNumber": 3,
+      "title": "Prompt Relay",
+      "subtitle": "Context Serialization & Zero-Drift Intermediate Handoff",
+      "description": "Architect a sequence of 3 interconnected prompts where the structured output of Stage 1 cleanly feeds Stage 2 and culminates in Stage 3 without hallucination or contextual degradation.",
+      "instructions": "Design a 3-stage relay pipeline: Stage 1 (Data Decomposition), Stage 2 (Analytical Synthesis), and Stage 3 (Actionable Decision Matrix). Your submission must define the prompt templates and handoff token contracts.",
+      "status": "LOCKED",
+      "durationMinutes": 35,
+      "maxAttempts": 2,
+      "timingMode": "individual",
+      "evaluationMethod": "ai_assisted",
+      "maxScore": 100,
+      "qualificationRules": "Top 15 finalists qualify for the Championship Round 4.",
+      "startTimestamp": null,
+      "endTimestamp": null,
+      "isResultsPublished": false,
+      "resultsPublishedAt": null,
+      "strictTabSwitchDisqualification": true,
+      "maxTabSwitchWarnings": 2
+    },
+    {
+      "id": "round_4",
+      "roundNumber": 4,
+      "title": "Upskilling — Prompt Chaining",
+      "subtitle": "Dynamic Agentic Orchestration & Verification Loops",
+      "description": "Engineer a master multi-step prompt chain with automated self-critique, deterministic rollback on schema violations, and adaptive tool-routing instructions.",
+      "instructions": "Construct an autonomous prompt chain designed for a real-time cybersecurity incident response system. The chain must handle triage, forensic synthesis, and containment action generation with explicit self-verification gates.",
+      "status": "LOCKED",
+      "durationMinutes": 40,
+      "maxAttempts": 2,
+      "timingMode": "individual",
+      "evaluationMethod": "ai_assisted",
+      "maxScore": 100,
+      "qualificationRules": "Top 3 podium winners determined by cumulative championship score.",
+      "startTimestamp": null,
+      "endTimestamp": null,
+      "isResultsPublished": false,
+      "resultsPublishedAt": null,
+      "strictTabSwitchDisqualification": true,
+      "maxTabSwitchWarnings": 2
+    }
+  ],
+  "challenges": [
+    {
+      "id": "ch_r1",
+      "roundId": "round_1",
+      "title": "Target Architecture Deconstruction: Resilient Distributed Cache",
+      "promptType": "prompt_submission",
+      "taskOverview": "Reverse-engineer the prompt that generated the high-precision technical specification below.",
+      "detailedTask": "Below is an excerpt from a verified target LLM output specifying a Fault-Tolerant Distributed Cache Engine with exact YAML configuration schema, latency SLAs (<1.2ms p99), and quorum policies. Your goal is to write the system prompt that reproduces this output structure, semantic fidelity, and constraint compliance without hallucinating arbitrary extra commentary.",
+      "targetScenario": "TARGET BENCHMARK OUTPUT:\n```yaml\nsystem: HyperCache-v4\narchitecture:\n  topology: hybrid-raft-ring\n  node_capacity_gib: 64\n  replication_factor: 3\n  read_consistency: eventual_bounded_150ms\n  write_consistency: quorum_strict\nbenchmarks:\n  p95_read_latency_ms: 0.8\n  p99_write_latency_ms: 1.15\n  max_tps_per_node: 45000\nfailover:\n  heartbeat_interval_ms: 200\n  leader_election_timeout_ms: 600\n  degradation_mode: read_only_stale_allowed\n```\nTASK: Write the system prompt that will instruct an AI to generate an identically formatted, rigorous distributed architecture specification for any high-throughput memory engine.",
+      "inputConstraints": [
+        "Submission must be a complete, self-contained prompt.",
+        "Must specify strict YAML format requirement with no preamble or markdown fences inside the response.",
+        "Must enforce explicit SLA numbers and failover timeout properties.",
+        "Must instruct the model to adopt the persona of a Principal Distributed Systems Architect."
+      ],
+      "maxTokensOrChars": 1500,
+      "rubric": [
+        {
+          "id": "r1_c1",
+          "criterion": "Role Definition & Intent Accuracy",
+          "weight": 25,
+          "description": "Clarity of role framing, domain expertise level, and task directive."
+        },
+        {
+          "id": "r1_c2",
+          "criterion": "Structural & Output Format Enforcement",
+          "weight": 30,
+          "description": "Explicit directives enforcing exact schema structure and preventing conversational fluff."
+        },
+        {
+          "id": "r1_c3",
+          "criterion": "Constraint Precision & Parameter Coverage",
+          "weight": 25,
+          "description": "Completeness of latency metrics, quorum requirements, and failover constraints."
+        },
+        {
+          "id": "r1_c4",
+          "criterion": "Generalizability & Determinism",
+          "weight": 20,
+          "description": "How reliably the prompt produces deterministic, zero-drift results across runs."
+        }
+      ],
+      "sampleInput": "Memory Engine Type: Distributed Key-Value Store with Raft consensus",
+      "expectedOutputFormat": "Pure YAML key-value hierarchy matching specification schema",
+      "hiddenExpectedAnswerOrCriteria": "A high-scoring prompt specifies: Persona (Principal Systems Architect), Format Directive (Respond ONLY with valid YAML, no introductory text), Exact Keys (topology, node_capacity_gib, replication_factor, latency SLAs, failover parameters), and Negative Constraints (Zero conversational filler).",
+      "aiEvaluationSystemPrompt": "Evaluate the student prompt on how effectively it reverse-engineers the target architecture output. Score out of 100 based on the 4 rubric criteria."
+    },
+    {
+      "id": "ch_r2",
+      "roundId": "round_2",
+      "title": "Enterprise Audit Gateway Specification Compression",
+      "promptType": "prompt_submission",
+      "taskOverview": "Compress a comprehensive 1,200-word enterprise security compliance prompt into under 180 words.",
+      "detailedTask": "An enterprise financial auditing service needs an automated prompt to review transaction payloads. The raw specification document spans 1,200 words covering SOC2 Type II compliance, PII masking (regex for credit cards/SSNs), multi-currency validation, and cryptographic HMAC-SHA256 signature verification. Compress this into an ultra-dense, unambiguous prompt under 180 words that maintains 100% constraint satisfaction.",
+      "targetScenario": "RAW SPECIFICATION HIGHLIGHTS:\n- Mask all 16-digit PANs with format \"XXXX-XXXX-XXXX-1234\"\n- Redact Tax IDs (SSN/EIN) completely to \"[REDACTED]\"\n- Reject any transaction exceeding $100,000 without 2FA biometric token flag\n- Output strictly RFC-7946 GeoJSON + JSON-LD audit log\n- Return HTTP 400 for unverified HMAC signature.",
+      "inputConstraints": [
+        "Strict length limit: Maximum 180 words (enforced by submission counter).",
+        "Must retain all 5 core security & formatting constraints.",
+        "No loss of semantic fidelity or schema rules."
+      ],
+      "maxTokensOrChars": 180,
+      "rubric": [
+        {
+          "id": "r2_c1",
+          "criterion": "Token & Word Economy",
+          "weight": 35,
+          "description": "Staying strictly under 180 words with minimal lexical redundancy."
+        },
+        {
+          "id": "r2_c2",
+          "criterion": "Constraint Preservation",
+          "weight": 35,
+          "description": "Accurate preservation of all 5 critical enterprise audit constraints."
+        },
+        {
+          "id": "r2_c3",
+          "criterion": "Semantic Density & Clarity",
+          "weight": 30,
+          "description": "Use of high-density technical syntax, shorthand, and direct notation."
+        }
+      ],
+      "hiddenExpectedAnswerOrCriteria": "Target compressed prompt leverages dense imperative syntax, compact regex definitions, and clear output spec while honoring the 180-word ceiling.",
+      "aiEvaluationSystemPrompt": "Analyze word count strictly. If word count > 180, deduct 20 points. Evaluate constraint preservation and density."
+    },
+    {
+      "id": "ch_r3",
+      "roundId": "round_3",
+      "title": "Tri-Stage Prompt Relay: Financial Anomaly Forensic Pipeline",
+      "promptType": "multi_step_workflow",
+      "taskOverview": "Design a 3-stage prompt relay pipeline where output of Stage 1 directly drives Stage 2, which feeds Stage 3.",
+      "detailedTask": "Develop an end-to-end prompt relay system for suspicious transaction analysis. Stage 1 extracts anomalous vectors from raw logs. Stage 2 computes risk scores and correlation clusters. Stage 3 drafts the formal Suspicious Activity Report (SAR) for regulatory submission. Clearly define the prompt for each stage and the intermediate JSON schema bridge.",
+      "targetScenario": "Input: Unstructured core banking transaction logs with timestamps, IP addresses, geolocations, and wire amounts.",
+      "inputConstraints": [
+        "Must define Stage 1, Stage 2, and Stage 3 prompts.",
+        "Must define the exact JSON payload contract between Stage 1 -> Stage 2 and Stage 2 -> Stage 3.",
+        "Must include error-handling directive for ambiguous data."
+      ],
+      "maxTokensOrChars": 3000,
+      "rubric": [
+        {
+          "id": "r3_c1",
+          "criterion": "Pipeline Architecture & Interface Contracts",
+          "weight": 30,
+          "description": "Completeness and robustness of JSON handoff schemas between stages."
+        },
+        {
+          "id": "r3_c2",
+          "criterion": "Context Retention & Hallucination Prevention",
+          "weight": 35,
+          "description": "Guarantees against drift, loss of original data, or hallucinated facts."
+        },
+        {
+          "id": "r3_c3",
+          "criterion": "Domain Depth & Regulatory Compliance",
+          "weight": 35,
+          "description": "Fidelity of forensic risk scoring and SAR reporting logic."
+        }
+      ],
+      "hiddenExpectedAnswerOrCriteria": "Complete 3-prompt sequence with explicit markdown/JSON delimiter tags for reliable machine consumption.",
+      "aiEvaluationSystemPrompt": "Evaluate the multi-stage relay pipeline. Verify that intermediate data formats match between stages."
+    },
+    {
+      "id": "ch_r4",
+      "roundId": "round_4",
+      "title": "Autonomous Cybersecurity Incident Remediation Chain",
+      "promptType": "multi_step_workflow",
+      "taskOverview": "Build an advanced multi-step prompt chain with self-critique, deterministic rollback, and verification loops.",
+      "detailedTask": "Design a comprehensive prompt orchestration chain for zero-day vulnerability containment. The system must autonomously triage threat intelligence, synthesize firewall/kernel patch commands, test the patch in a virtual simulation check, verify zero business disruption, and trigger automatic rollback if side-effects are detected.",
+      "targetScenario": "Target incident: Active CVE exploitation attempting memory corruption on edge load balancers.",
+      "inputConstraints": [
+        "Must specify triage step, containment generation, validation loop, and rollback trigger.",
+        "Must incorporate self-critique prompt with explicit pass/fail threshold.",
+        "Must include a human-in-the-loop authorization gate before production execution."
+      ],
+      "maxTokensOrChars": 4000,
+      "rubric": [
+        {
+          "id": "r4_c1",
+          "criterion": "Orchestration & Verification Loop Design",
+          "weight": 35,
+          "description": "Elegance and resilience of automated self-critique and validation loops."
+        },
+        {
+          "id": "r4_c2",
+          "criterion": "Safety Guards & Rollback Logic",
+          "weight": 35,
+          "description": "Deterministic rollback triggers, simulation isolation, and guardrails."
+        },
+        {
+          "id": "r4_c3",
+          "criterion": "Operational Feasibility & Prompt Engineering Rigor",
+          "weight": 30,
+          "description": "Precision of prompt directives, negative prompts, and edge-case handling."
+        }
+      ],
+      "hiddenExpectedAnswerOrCriteria": "Full prompt chaining specification with cycle limits to prevent infinite loops, schema validations, and fallback states.",
+      "aiEvaluationSystemPrompt": "Score the prompt chaining architecture based on loop safety, self-verification rigor, and rollback mechanics."
+    }
+  ],
+  "roundParticipants": [
+    {
+      "id": "rp_1790407208806_bc71",
+      "roundId": "round_1",
+      "studentId": "usr_stu_01",
+      "studentName": "Arjun Mehta",
+      "collegeName": "BITS Pilani",
+      "department": "Computer Science & Information Systems",
+      "startedAt": "2026-09-26T07:20:08.806Z",
+      "expiresAt": "2026-09-26T07:50:08.806Z",
+      "status": "EVALUATED",
+      "attemptsCount": 1,
+      "remainingAttempts": 1,
+      "highestScore": 92,
+      "finalScore": 92,
+      "timeTakenSeconds": 9,
+      "isDisqualified": false,
+      "disqualificationReason": null,
+      "disqualifiedAt": null,
+      "tabSwitchCount": 0
+    }
+  ],
+  "attempts": [],
+  "submissions": [
+    {
+      "id": "sub_1790407220618_398u",
+      "roundId": "round_1",
+      "roundTitle": "Reverse Prompting",
+      "studentId": "usr_stu_01",
+      "studentName": "Arjun Mehta",
+      "collegeName": "BITS Pilani",
+      "department": "Computer Science & Information Systems",
+      "academicYear": "3rd Year",
+      "attemptNumber": 1,
+      "promptSubmission": "You are a Principal Distributed Systems Architect. Generate an ultra-strict YAML configuration for HyperCache-v4 with raft-ring topology, replication factor 3, quorum strict write consistency, bounded eventual read consistency under 150ms, read SLA p95 < 0.8ms, write SLA p99 < 1.15ms, and 200ms failover heartbeats. Output strictly valid YAML with no preamble, conversational text, or markdown code fences.",
+      "submittedAt": "2026-09-26T07:20:17.722Z",
+      "timeTakenSeconds": 9,
+      "status": "EVALUATED",
+      "score": 92,
+      "maxScore": 100,
+      "feedback": "Evaluation completed successfully against official rubric criteria (92/100).",
+      "criterionScores": [
+        {
+          "criterion": "Role Definition & Intent Accuracy",
+          "score": 23,
+          "maxScore": 25,
+          "comment": "Strong architectural persona framing established."
+        },
+        {
+          "criterion": "Structural & Output Format Enforcement",
+          "score": 29,
+          "maxScore": 30,
+          "comment": "Strict YAML output constraint unambiguously declared."
+        },
+        {
+          "criterion": "Constraint Precision & Parameter Coverage",
+          "score": 23,
+          "maxScore": 25,
+          "comment": "Covers latency SLAs, quorum and failover constraints."
+        },
+        {
+          "criterion": "Generalizability & Determinism",
+          "score": 17,
+          "maxScore": 20,
+          "comment": "Good deterministic prompt engineering structure."
+        }
+      ],
+      "evaluationMethodUsed": "ai_assisted",
+      "evaluatedBy": "rule_engine",
+      "evaluatedAt": "2026-09-26T07:20:20.618Z"
+    }
+  ],
+  "proctoringEvents": [],
+  "roundResults": [],
+  "announcements": [
+    {
+      "id": "ann_01",
+      "title": "Welcome to LEXORA 2026",
+      "content": "Welcome delegates and participants from over 45 collegiate institutions! Please verify your profile details and review the championship rules prior to Round 1 activation.",
+      "priority": "HIGH",
+      "author": "Championship Organizing Committee",
+      "createdAt": "2026-09-26T07:19:19.552Z"
+    },
+    {
+      "id": "ann_02",
+      "title": "Proctoring & Integrity Advisory",
+      "content": "During active challenge attempts, full window focus is required. Browser tab switching or minimizing the contest window will trigger automated warnings and may result in immediate round disqualification.",
+      "priority": "URGENT",
+      "author": "Technical Integrity Division",
+      "createdAt": "2026-09-26T07:19:19.552Z"
+    }
+  ],
+  "notifications": [
+    {
+      "id": "notif_1790413255543_ephq",
+      "userId": "usr_1790413255538_d9ao",
+      "title": "Registration Confirmed",
+      "message": "Welcome to LEXORA! Your registration number is LEX-2026-102. Review championship rules prior to Round 1.",
+      "type": "ROUND_ACTIVE",
+      "isRead": false,
+      "createdAt": "2026-09-26T09:00:55.543Z"
+    },
+    {
+      "id": "notif_1790407239427_2c6t",
+      "userId": "usr_stu_01",
+      "title": "Results Published: Round 1",
+      "message": "Official results for Reverse Prompting are now live on the leaderboard.",
+      "type": "RESULTS_PUBLISHED",
+      "isRead": false,
+      "createdAt": "2026-09-26T07:20:39.428Z"
+    },
+    {
+      "id": "notif_1790407220618_j70m",
+      "userId": "usr_stu_01",
+      "title": "Attempt 1 Evaluated",
+      "message": "Your submission for Reverse Prompting (Attempt 1 of 2) was scored. 1 attempt(s) remaining.",
+      "type": "EVALUATED",
+      "isRead": false,
+      "createdAt": "2026-09-26T07:20:20.618Z"
+    },
+    {
+      "id": "notif_1790407189927_d7qu",
+      "userId": "usr_stu_01",
+      "title": "Round 1 Activated!",
+      "message": "Round 1: Reverse Prompting is now ACTIVE. Enter the workspace to compete.",
+      "type": "ROUND_ACTIVE",
+      "isRead": false,
+      "createdAt": "2026-09-26T07:19:49.927Z"
+    },
+    {
+      "id": "notif_01",
+      "userId": "usr_stu_01",
+      "title": "Registration Confirmed",
+      "message": "Your registration for LEXORA 2026 has been approved with registration ID LEX-2026-084.",
+      "type": "ROUND_ACTIVE",
+      "isRead": false,
+      "createdAt": "2026-09-26T07:19:19.552Z"
+    }
+  ],
+  "auditLogs": [
+    {
+      "id": "aud_1790417731037_h22u",
+      "actorId": "usr_admin_01",
+      "actorName": "admin",
+      "actorRole": "admin",
+      "action": "ROUND_PAUSED",
+      "targetEntity": "ROUND",
+      "targetId": "round_1",
+      "details": "Round 1 paused.",
+      "timestamp": "2026-09-26T10:15:31.037Z"
+    },
+    {
+      "id": "aud_1790417694363_1xbo",
+      "actorId": "usr_admin_01",
+      "actorName": "Dr. Evelyn Vance",
+      "actorRole": "admin",
+      "action": "USER_LOGIN",
+      "targetEntity": "USER",
+      "targetId": "usr_admin_01",
+      "details": "User logged in via admin portal",
+      "timestamp": "2026-09-26T10:14:54.363Z"
+    },
+    {
+      "id": "aud_1790417539195_tnfq",
+      "actorId": "usr_admin_01",
+      "actorName": "Dr. Evelyn Vance",
+      "actorRole": "admin",
+      "action": "USER_LOGIN",
+      "targetEntity": "USER",
+      "targetId": "usr_admin_01",
+      "details": "User logged in via admin portal",
+      "timestamp": "2026-09-26T10:12:19.195Z"
+    },
+    {
+      "id": "aud_1790413255554_17p2",
+      "actorId": "usr_1790413255538_d9ao",
+      "actorName": "Jeeth J",
+      "actorRole": "student",
+      "action": "STUDENT_REGISTERED",
+      "targetEntity": "STUDENT_PROFILE",
+      "targetId": "prof_1790413255542",
+      "details": "Registered from Jansons (3rd Year)",
+      "timestamp": "2026-09-26T09:00:55.554Z"
+    },
+    {
+      "id": "aud_1790407239427_2vjt",
+      "actorId": "usr_admin_01",
+      "actorName": "admin",
+      "actorRole": "admin",
+      "action": "RESULTS_PUBLISHED",
+      "targetEntity": "ROUND",
+      "targetId": "round_1",
+      "details": "Official results for Round 1 published.",
+      "timestamp": "2026-09-26T07:20:39.427Z"
+    },
+    {
+      "id": "aud_1790407220619_9vxa",
+      "actorId": "usr_stu_01",
+      "actorName": "Arjun Mehta",
+      "actorRole": "student",
+      "action": "SUBMISSION_RECORDED",
+      "targetEntity": "SUBMISSION",
+      "targetId": "sub_1790407220618_398u",
+      "details": "Attempt 1/2 submitted for Round 1. Score: 92/100.",
+      "timestamp": "2026-09-26T07:20:20.619Z"
+    },
+    {
+      "id": "aud_1790407198449_v6zb",
+      "actorId": "usr_stu_01",
+      "actorName": "Arjun Mehta",
+      "actorRole": "student",
+      "action": "USER_LOGIN",
+      "targetEntity": "USER",
+      "targetId": "usr_stu_01",
+      "details": "User logged in via student portal",
+      "timestamp": "2026-09-26T07:19:58.449Z"
+    },
+    {
+      "id": "aud_1790407189926_8l6a",
+      "actorId": "usr_admin_01",
+      "actorName": "admin",
+      "actorRole": "admin",
+      "action": "ROUND_STARTED",
+      "targetEntity": "ROUND",
+      "targetId": "round_1",
+      "details": "Round 1 (Reverse Prompting) activated.",
+      "timestamp": "2026-09-26T07:19:49.926Z"
+    },
+    {
+      "id": "aud_1790407179319_xr8v",
+      "actorId": "usr_admin_01",
+      "actorName": "Dr. Evelyn Vance",
+      "actorRole": "admin",
+      "action": "USER_LOGIN",
+      "targetEntity": "USER",
+      "targetId": "usr_admin_01",
+      "details": "User logged in via admin portal",
+      "timestamp": "2026-09-26T07:19:39.319Z"
+    },
+    {
+      "id": "aud_init_01",
+      "actorId": "usr_admin_01",
+      "actorName": "System Setup",
+      "actorRole": "system",
+      "action": "SYSTEM_INITIALIZED",
+      "targetEntity": "EVENT",
+      "targetId": "LEXORA-2026",
+      "details": "Championship initialized with 4 official rounds and default constraints.",
+      "timestamp": "2026-09-26T07:19:19.552Z"
+    }
+  ]
+}

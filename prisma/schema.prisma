@@ -1,0 +1,14 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model AppState {
+  id        String   @id @default("singleton")
+  data      String
+  updatedAt DateTime @updatedAt
+}

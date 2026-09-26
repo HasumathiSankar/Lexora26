@@ -1,0 +1,6 @@
+{
+  "name": "LEXORA — Inter-College Prompt Engineering Championship",
+  "description": "Official competition management platform for LEXORA Inter-College Prompt Engineering Championship featuring timed challenges, proctoring, AI evaluation, and real-time leaderboards.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
