@@ -69,8 +69,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     if (location.pathname === '/register') {
       setMode('register');
       setRole('student');
+    } else if (location.pathname === '/admin-login') {
+      setMode('login');
+      setRole('admin');
     } else if (location.pathname === '/login') {
       setMode('login');
+      setRole('student');
     }
   }, [location.pathname]);
 
@@ -151,24 +155,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             </p>
           </div>
 
-          {/* Primary Mode Tabs (Register / Student Login / Admin Login) */}
-          <div className="border-b border-[#F9DBBD] bg-[#FCF4EB]/60 p-2 flex items-center gap-1">
-            <button
-              onClick={() => {
-                setMode('login');
-                setRole('student');
-                setError(null);
-              }}
-              className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                mode === 'login' && role === 'student'
-                  ? 'bg-white text-[#A53860] shadow-sm border border-[#F9DBBD]'
-                  : 'text-gray-600 hover:text-[#A53860]'
-              }`}
-            >
-              <GraduationCap className="w-4 h-4 text-[#DA627D]" />
-              <span>Student Login</span>
-            </button>
-
+          <div className="border-b border-[#F9DBBD] bg-[#FCF4EB]/60 p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
             <button
               onClick={() => {
                 setMode('login');
@@ -177,11 +164,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               }}
               className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                 mode === 'login' && role === 'admin'
-                  ? 'bg-white text-[#A53860] shadow-sm border border-[#F9DBBD]'
-                  : 'text-gray-600 hover:text-[#A53860]'
+                  ? 'bg-[#A53860] text-white shadow-sm'
+                  : 'bg-white text-[#A53860] border border-[#F9DBBD] hover:bg-[#FCF4EB]'
               }`}
             >
-              <Shield className="w-4 h-4 text-[#A53860]" />
+              <Shield className="w-4 h-4" />
               <span>Admin Login</span>
             </button>
 
@@ -194,10 +181,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                 mode === 'register'
                   ? 'bg-[#DA627D] text-white shadow-sm'
-                  : 'text-gray-600 hover:text-[#DA627D]'
+                  : 'bg-white text-[#A53860] border border-[#F9DBBD] hover:bg-[#FCF4EB]'
               }`}
             >
-              <span>Register Now</span>
+              <GraduationCap className="w-4 h-4" />
+              <span>Register as Student</span>
             </button>
           </div>
 
@@ -391,7 +379,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 <div className="border-b border-[#F9DBBD]/60 pb-3 mb-2 flex items-center justify-between">
                   <div>
                     <h3 className="font-serif text-lg font-bold text-[#A53860]">
-                      {role === 'admin' ? 'Administrator Login' : 'Student Participant Login'}
+                      {role === 'admin' ? 'Administrator Login' : 'Already registered? Sign in'}
                     </h3>
                     <p className="text-xs text-gray-500">
                       {role === 'admin'
@@ -403,7 +391,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-700 mb-1">
-                    {role === 'admin' ? 'Admin Username or Email' : 'Email Address or Username'} *
+                      {role === 'admin' ? 'Admin Username or Email' : 'Username or email'} *
                   </label>
                   <div className="relative">
                     <User className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
@@ -442,20 +430,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   </div>
                 </div>
 
-                {role === 'admin' && (
-                  <div className="p-3 rounded-xl bg-[#FCF4EB] border border-[#FFA5AB]/50 text-[11px] text-[#220914] space-y-1">
-                    <p className="font-semibold text-[#A53860]">Demo Administrator Credentials:</p>
-                    <p>Username: <code className="bg-white px-1.5 py-0.5 rounded border text-[#A53860]">admin</code> · Password: <code className="bg-white px-1.5 py-0.5 rounded border text-[#A53860]">lexora2026!</code></p>
-                  </div>
-                )}
-
-                {role === 'student' && (
-                  <div className="p-3 rounded-xl bg-gray-50 border border-gray-200 text-[11px] text-gray-600 space-y-1">
-                    <p className="font-semibold text-gray-700">Pre-seeded Student Demo Account:</p>
-                    <p>Email: <code className="bg-white px-1.5 py-0.5 rounded border">arjun.mehta@bits-pilani.ac.in</code> · Password: <code className="bg-white px-1.5 py-0.5 rounded border">Student@123</code></p>
-                  </div>
-                )}
-
                 <div className="pt-2">
                   <button
                     type="submit"
@@ -466,7 +440,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                         : 'bg-[#DA627D] hover:bg-[#A53860]'
                     }`}
                   >
-                    <span>{isSubmitting ? 'Authenticating...' : `Enter as ${role === 'admin' ? 'Administrator' : 'Student'}`}</span>
+                    <span>{isSubmitting ? 'Authenticating...' : role === 'admin' ? 'Admin Sign In' : 'Sign In'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>

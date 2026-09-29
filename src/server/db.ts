@@ -21,6 +21,8 @@ import type {
   AuditLog,
   AdminStats,
 } from '../shared/types.ts';
+import { DEFAULT_COMPLETION_THRESHOLD, DEFAULT_SCORING_WEIGHTS } from './scoring.ts';
+import { rankLeaderboardEntries, roundToTwo } from './scoring.ts';
 
 // Password hashing utility using PBKDF2
 export function hashPassword(password: string): string {
@@ -88,11 +90,9 @@ function getInitialData(): DatabaseSchema {
       id: 'round_1',
       roundNumber: 1,
       title: 'Reverse Prompting',
-      subtitle: 'Target Reconstruction & System Intent Extraction',
-      description:
-        'Analyze a complex synthetic AI output and reverse-engineer the exact system prompt, constraints, role framing, and formatting directives needed to reproduce it deterministically.',
-      instructions:
-        'Examine the target benchmark output below. Construct a single comprehensive prompt that instructs an LLM to generate output matching the structure, tone, constraints, and specific technical parameters of the target output without extraneous conversational filler.',
+      subtitle: 'Describe What You See',
+      description: 'Study two reference images and write prompts that describe their visual details.',
+      instructions: 'For each reference image, write a prompt that could generate a similar image. Describe its subject, lighting, colours, background, composition, visual details, and style.',
       status: 'LOCKED', // Default per specification: initially locked until admin starts it
       durationMinutes: 30,
       maxAttempts: 2,
@@ -111,11 +111,9 @@ function getInitialData(): DatabaseSchema {
       id: 'round_2',
       roundNumber: 2,
       title: 'Prompt Compression',
-      subtitle: 'Extreme Token Economy & Lossless Distillation',
-      description:
-        'Distill a sprawling 1,200-word enterprise requirement document into a hyper-condensed prompt under 180 words while retaining 100% of functional requirements and negative constraints.',
-      instructions:
-        'Given the extensive specification for a distributed microservice audit logger, engineer a high-density prompt strictly under 180 words/tokens that produces the exact required output schema without losing a single edge-case handling constraint.',
+      subtitle: 'Shorten the Prompt, Keep the Meaning',
+      description: 'Shorten a simple instruction while preserving every important requirement.',
+      instructions: 'Read the passage and write a clear, shorter prompt of no more than 50 words. Keep all essential instructions and request the final timetable as a simple table.',
       status: 'LOCKED',
       durationMinutes: 25,
       maxAttempts: 2,
@@ -134,11 +132,9 @@ function getInitialData(): DatabaseSchema {
       id: 'round_3',
       roundNumber: 3,
       title: 'Prompt Relay',
-      subtitle: 'Context Serialization & Zero-Drift Intermediate Handoff',
-      description:
-        'Architect a sequence of 3 interconnected prompts where the structured output of Stage 1 cleanly feeds Stage 2 and culminates in Stage 3 without hallucination or contextual degradation.',
-      instructions:
-        'Design a 3-stage relay pipeline: Stage 1 (Data Decomposition), Stage 2 (Analytical Synthesis), and Stage 3 (Actionable Decision Matrix). Your submission must define the prompt templates and handoff token contracts.',
+      subtitle: 'Three-Step Study Planner',
+      description: 'Create three connected prompts where each step uses the previous step’s output.',
+      instructions: 'Write a prompt for each step: identify a student’s subjects and exam dates, create a daily study timetable from that information, then use the timetable to suggest three practical revision tips.',
       status: 'LOCKED',
       durationMinutes: 35,
       maxAttempts: 2,
@@ -156,12 +152,10 @@ function getInitialData(): DatabaseSchema {
     {
       id: 'round_4',
       roundNumber: 4,
-      title: 'Upskilling — Prompt Chaining',
-      subtitle: 'Dynamic Agentic Orchestration & Verification Loops',
-      description:
-        'Engineer a master multi-step prompt chain with automated self-critique, deterministic rollback on schema violations, and adaptive tool-routing instructions.',
-      instructions:
-        'Construct an autonomous prompt chain designed for a real-time cybersecurity incident response system. The chain must handle triage, forensic synthesis, and containment action generation with explicit self-verification gates.',
+      title: 'Prompt Chaining',
+      subtitle: 'Create a College Event Announcement',
+      description: 'Build a three-stage workflow to draft, review, and improve a college event announcement.',
+      instructions: 'Create connected prompts to draft an announcement from supplied event details, check it for required information, then use the review to correct gaps and unclear wording.',
       status: 'LOCKED',
       durationMinutes: 40,
       maxAttempts: 2,
@@ -178,188 +172,134 @@ function getInitialData(): DatabaseSchema {
     },
   ];
 
+  rounds.forEach((round) => {
+    round.scoringWeights = { ...DEFAULT_SCORING_WEIGHTS };
+    round.completionThreshold = DEFAULT_COMPLETION_THRESHOLD;
+    round.leaderboardEligible = true;
+    round.scoringConfigUpdatedAt = null;
+  });
+
   // Configurable Challenge templates for each round
   const challenges: Challenge[] = [
     {
       id: 'ch_r1',
       roundId: 'round_1',
-      title: 'Target Architecture Deconstruction: Resilient Distributed Cache',
+      title: 'Recreate the Reference Images',
       promptType: 'prompt_submission',
-      taskOverview:
-        'Reverse-engineer the prompt that generated the high-precision technical specification below.',
-      detailedTask:
-        'Below is an excerpt from a verified target LLM output specifying a Fault-Tolerant Distributed Cache Engine with exact YAML configuration schema, latency SLAs (<1.2ms p99), and quorum policies. Your goal is to write the system prompt that reproduces this output structure, semantic fidelity, and constraint compliance without hallucinating arbitrary extra commentary.',
-      targetScenario:
-        'TARGET BENCHMARK OUTPUT:\n```yaml\nsystem: HyperCache-v4\narchitecture:\n  topology: hybrid-raft-ring\n  node_capacity_gib: 64\n  replication_factor: 3\n  read_consistency: eventual_bounded_150ms\n  write_consistency: quorum_strict\nbenchmarks:\n  p95_read_latency_ms: 0.8\n  p99_write_latency_ms: 1.15\n  max_tps_per_node: 45000\nfailover:\n  heartbeat_interval_ms: 200\n  leader_election_timeout_ms: 600\n  degradation_mode: read_only_stale_allowed\n```\nTASK: Write the system prompt that will instruct an AI to generate an identically formatted, rigorous distributed architecture specification for any high-throughput memory engine.',
+      taskOverview: 'Study each reference image and describe it in a prompt that could generate a similar image.',
+      detailedTask: 'Write one prompt for each image. Be specific about the visible subject, lighting, dominant and supporting colours, background, composition, visual details, and style. Use relevant details only; exact wording is not required.',
+      targetScenario: '',
       inputConstraints: [
-        'Submission must be a complete, self-contained prompt.',
-        'Must specify strict YAML format requirement with no preamble or markdown fences inside the response.',
-        'Must enforce explicit SLA numbers and failover timeout properties.',
-        'Must instruct the model to adopt the persona of a Principal Distributed Systems Architect.',
+        'Submit a separate prompt for each reference image.',
+        'Describe the image accurately; equivalent wording is accepted.',
+        'Include useful visual details without adding unrelated filler.',
       ],
-      maxTokensOrChars: 1500,
+      maxTokensOrChars: 1200,
       rubric: [
-        {
-          id: 'r1_c1',
-          criterion: 'Role Definition & Intent Accuracy',
-          weight: 25,
-          description:
-            'Clarity of role framing, domain expertise level, and task directive.',
-        },
-        {
-          id: 'r1_c2',
-          criterion: 'Structural & Output Format Enforcement',
-          weight: 30,
-          description:
-            'Explicit directives enforcing exact schema structure and preventing conversational fluff.',
-        },
-        {
-          id: 'r1_c3',
-          criterion: 'Constraint Precision & Parameter Coverage',
-          weight: 25,
-          description:
-            'Completeness of latency metrics, quorum requirements, and failover constraints.',
-        },
-        {
-          id: 'r1_c4',
-          criterion: 'Generalizability & Determinism',
-          weight: 20,
-          description:
-            'How reliably the prompt produces deterministic, zero-drift results across runs.',
-        },
+        { id: 'r1_c1', criterion: 'Lighting', weight: 10, category: 'task_achievement', description: 'Accurately captures the light source, softness, brightness, shadows, and highlights where visible.' },
+        { id: 'r1_c2', criterion: 'Colour Pattern', weight: 10, category: 'task_achievement', description: 'Identifies dominant and secondary colours and their warm or cool relationships.' },
+        { id: 'r1_c3', criterion: 'Subject Identification', weight: 10, category: 'task_achievement', description: 'Names the main subject or scene correctly.' },
+        { id: 'r1_c4', criterion: 'Background', weight: 10, category: 'task_achievement', description: 'Describes relevant background objects, colour, texture, and setting.' },
+        { id: 'r1_c5', criterion: 'Composition', weight: 10, category: 'task_achievement', description: 'Captures subject placement, framing, perspective, or camera angle.' },
+        { id: 'r1_c6', criterion: 'Visual Details', weight: 10, category: 'task_achievement', description: 'Includes distinctive shapes, textures, objects, and small visible details.' },
+        { id: 'r1_c7', criterion: 'Style', weight: 10, category: 'task_achievement', description: 'Recognizes the image style, such as realistic, illustrated, cinematic, or minimal.' },
+        { id: 'r1_c8', criterion: 'Clarity and Completeness', weight: 10, category: 'prompt_quality', description: 'Gives clear, complete instructions for generating the described image.' },
+        { id: 'r1_c9', criterion: 'Specificity and Relationships', weight: 10, category: 'prompt_quality', description: 'Uses specific visual details and accurately describes spatial relationships.' },
+        { id: 'r1_c10', criterion: 'Structure and Relevance', weight: 10, category: 'prompt_quality', description: 'Organizes relevant details logically and avoids ambiguity or unrelated filler.' },
       ],
-      sampleInput: 'Memory Engine Type: Distributed Key-Value Store with Raft consensus',
-      expectedOutputFormat: 'Pure YAML key-value hierarchy matching specification schema',
+      referenceImages: [
+        { title: 'Recreate the Reference Image — Question 1', src: '/reference-images/reverse-prompting-1.svg', alt: 'Reference image for question 1.' },
+        { title: 'Recreate the Reference Image — Question 2', src: '/reference-images/reverse-prompting-2.svg', alt: 'Reference image for question 2.' },
+      ],
       hiddenExpectedAnswerOrCriteria:
-        'A high-scoring prompt specifies: Persona (Principal Systems Architect), Format Directive (Respond ONLY with valid YAML, no introductory text), Exact Keys (topology, node_capacity_gib, replication_factor, latency SLAs, failover parameters), and Negative Constraints (Zero conversational filler).',
+        'Evaluate both labeled answers for semantic visual accuracy; do not require exact wording and do not reward irrelevant length. Image 1: hand-painted editorial still life in a wide landscape composition; a white ceramic bowl holding three yellow lemons sits slightly right of center on a warm honey-brown wooden table; one loose lemon and a leafy green branch sit to the left; muted sage-green wall; soft natural morning light enters from upper left and casts gentle shadows to the right; visible brush texture and calm minimal composition. Image 2: cozy illustrated night-time study desk; an amber glowing brass desk lamp on the left illuminates an open cream book at center; a small leafy plant on the right; deep navy window and cool blue night outside; warm/cool colour contrast, angled tabletop perspective, soft pools of light and shadows, clean storybook illustration. Award credit for semantically equivalent descriptions across both answers.',
       aiEvaluationSystemPrompt:
-        'Evaluate the student prompt on how effectively it reverse-engineers the target architecture output. Score out of 100 based on the 4 rubric criteria.',
+        'Score the two separate image descriptions together. Compare each answer semantically to its matching hidden image specification and explain visual details included or missed. Do not demand exact wording or reward irrelevant length.',
     },
     {
       id: 'ch_r2',
       roundId: 'round_2',
-      title: 'Enterprise Audit Gateway Specification Compression',
+      title: 'Shorten the Prompt, Keep the Meaning',
       promptType: 'prompt_submission',
-      taskOverview:
-        'Compress a comprehensive 1,200-word enterprise security compliance prompt into under 180 words.',
-      detailedTask:
-        'An enterprise financial auditing service needs an automated prompt to review transaction payloads. The raw specification document spans 1,200 words covering SOC2 Type II compliance, PII masking (regex for credit cards/SSNs), multi-currency validation, and cryptographic HMAC-SHA256 signature verification. Compress this into an ultra-dense, unambiguous prompt under 180 words that maintains 100% constraint satisfaction.',
-      targetScenario:
-        'RAW SPECIFICATION HIGHLIGHTS:\n- Mask all 16-digit PANs with format "XXXX-XXXX-XXXX-1234"\n- Redact Tax IDs (SSN/EIN) completely to "[REDACTED]"\n- Reject any transaction exceeding $100,000 without 2FA biometric token flag\n- Output strictly RFC-7946 GeoJSON + JSON-LD audit log\n- Return HTTP 400 for unverified HMAC signature.',
+      taskOverview: 'Write a short, clear prompt that keeps every important instruction from the passage.',
+      detailedTask: 'Read the passage, then write a compressed prompt of no more than 50 words. Preserve the essential requirements, use understandable wording, and do not add unrelated instructions.',
+      targetScenario: 'You are helping a first-year college student prepare a study timetable for the coming week. The student has classes from Monday to Friday and wants to study three subjects every day. Create a timetable with three study sessions per day. Include a short break between each session. Give extra study time to difficult subjects. Keep the timetable simple and easy to understand. Present the final timetable in a table. Include a revision session on Friday.',
       inputConstraints: [
-        'Strict length limit: Maximum 180 words (enforced by submission counter).',
-        'Must retain all 5 core security & formatting constraints.',
-        'No loss of semantic fidelity or schema rules.',
+        'Maximum 50 words.',
+        'Keep the Monday-to-Friday schedule and three daily study sessions.',
+        'Keep short breaks, extra time for difficult subjects, and Friday revision.',
+        'Request a simple, easy-to-understand timetable in a table.',
       ],
-      maxTokensOrChars: 180, // word limit
+      maxTokensOrChars: 50,
       rubric: [
-        {
-          id: 'r2_c1',
-          criterion: 'Token & Word Economy',
-          weight: 35,
-          description: 'Staying strictly under 180 words with minimal lexical redundancy.',
-        },
-        {
-          id: 'r2_c2',
-          criterion: 'Constraint Preservation',
-          weight: 35,
-          description: 'Accurate preservation of all 5 critical enterprise audit constraints.',
-        },
-        {
-          id: 'r2_c3',
-          criterion: 'Semantic Density & Clarity',
-          weight: 30,
-          description: 'Use of high-density technical syntax, shorthand, and direct notation.',
-        },
+        { id: 'r2_c1', criterion: 'Within 50 Words', weight: 15, category: 'task_achievement', description: 'The compressed prompt is no more than 50 words.' },
+        { id: 'r2_c2', criterion: 'Monday–Friday Schedule', weight: 12, category: 'task_achievement', description: 'Retains the weekday schedule for the coming week.' },
+        { id: 'r2_c3', criterion: 'Three Daily Sessions', weight: 12, category: 'task_achievement', description: 'Requests three subjects or study sessions each day.' },
+        { id: 'r2_c4', criterion: 'Short Breaks', weight: 12, category: 'task_achievement', description: 'Includes a short break between study sessions.' },
+        { id: 'r2_c5', criterion: 'Difficult Subjects', weight: 12, category: 'task_achievement', description: 'Allocates extra study time to difficult subjects.' },
+        { id: 'r2_c6', criterion: 'Friday Revision', weight: 12, category: 'task_achievement', description: 'Includes a revision session on Friday.' },
+        { id: 'r2_c7', criterion: 'Simple Table', weight: 12, category: 'task_achievement', description: 'Requests a simple and understandable timetable presented as a table.' },
+        { id: 'r2_c8', criterion: 'Clear and Concise', weight: 13, category: 'prompt_quality', description: 'Uses clear, concise wording without unrelated requirements.' },
       ],
       hiddenExpectedAnswerOrCriteria:
-        'Target compressed prompt leverages dense imperative syntax, compact regex definitions, and clear output spec while honoring the 180-word ceiling.',
+        'Check semantic retention of every instruction in the passage. Accept equivalent phrasing; do not require literal wording. A response must remain within 50 words.',
       aiEvaluationSystemPrompt:
-        'Analyze word count strictly. If word count > 180, deduct 20 points. Evaluate constraint preservation and density.',
+        'Count words strictly and score every retained requirement. Accept equivalent meaning; penalize omissions and unrelated additions. The 50-word maximum is mandatory.',
     },
     {
       id: 'ch_r3',
       roundId: 'round_3',
-      title: 'Tri-Stage Prompt Relay: Financial Anomaly Forensic Pipeline',
+      title: 'Three-Step Study Planner',
       promptType: 'multi_step_workflow',
-      taskOverview:
-        'Design a 3-stage prompt relay pipeline where output of Stage 1 directly drives Stage 2, which feeds Stage 3.',
-      detailedTask:
-        'Develop an end-to-end prompt relay system for suspicious transaction analysis. Stage 1 extracts anomalous vectors from raw logs. Stage 2 computes risk scores and correlation clusters. Stage 3 drafts the formal Suspicious Activity Report (SAR) for regulatory submission. Clearly define the prompt for each stage and the intermediate JSON schema bridge.',
-      targetScenario:
-        'Input: Unstructured core banking transaction logs with timestamps, IP addresses, geolocations, and wire amounts.',
+      taskOverview: 'Create three connected prompts that help a student prepare for an examination.',
+      detailedTask: 'Write all three prompts. Step 1 asks an AI to identify the student’s subjects and exam dates from supplied information. Step 2 uses those subjects and dates to create a daily study timetable. Step 3 uses that timetable to suggest three practical revision tips.',
+      targetScenario: 'Use the student’s supplied study and examination information as the input to Step 1.',
       inputConstraints: [
-        'Must define Stage 1, Stage 2, and Stage 3 prompts.',
-        'Must define the exact JSON payload contract between Stage 1 -> Stage 2 and Stage 2 -> Stage 3.',
-        'Must include error-handling directive for ambiguous data.',
+        'Submit a separate prompt for each of the three steps.',
+        'Step 2 must use the subjects and exam dates from Step 1.',
+        'Step 3 must use the timetable from Step 2 and suggest three practical tips.',
+        'Keep the workflow understandable, relevant, and logically connected.',
       ],
       maxTokensOrChars: 3000,
       rubric: [
-        {
-          id: 'r3_c1',
-          criterion: 'Pipeline Architecture & Interface Contracts',
-          weight: 30,
-          description: 'Completeness and robustness of JSON handoff schemas between stages.',
-        },
-        {
-          id: 'r3_c2',
-          criterion: 'Context Retention & Hallucination Prevention',
-          weight: 35,
-          description: 'Guarantees against drift, loss of original data, or hallucinated facts.',
-        },
-        {
-          id: 'r3_c3',
-          criterion: 'Domain Depth & Regulatory Compliance',
-          weight: 35,
-          description: 'Fidelity of forensic risk scoring and SAR reporting logic.',
-        },
+        { id: 'r3_c1', criterion: 'Three Prompts Submitted', weight: 20, category: 'task_achievement', description: 'Provides a distinct prompt for each of the three steps.' },
+        { id: 'r3_c2', criterion: 'Step 1 Purpose', weight: 15, category: 'task_achievement', description: 'Asks the AI to identify subjects and exam dates from supplied information.' },
+        { id: 'r3_c3', criterion: 'Step 2 Uses Step 1', weight: 20, category: 'task_achievement', description: 'Uses the subjects and exam dates identified in Step 1 to create a daily timetable.' },
+        { id: 'r3_c4', criterion: 'Step 3 Uses Step 2', weight: 20, category: 'task_achievement', description: 'Uses the timetable from Step 2 to suggest three practical revision tips.' },
+        { id: 'r3_c5', criterion: 'Connected Workflow', weight: 15, category: 'task_achievement', description: 'Clearly passes each step’s output into the next step.' },
+        { id: 'r3_c6', criterion: 'Clarity and Relevance', weight: 10, category: 'prompt_quality', description: 'Prompts are understandable and relevant to exam preparation.' },
       ],
       hiddenExpectedAnswerOrCriteria:
-        'Complete 3-prompt sequence with explicit markdown/JSON delimiter tags for reliable machine consumption.',
+        'Award credit for clear purpose and semantic handoff between each step. All three prompts must be present.',
       aiEvaluationSystemPrompt:
-        'Evaluate the multi-stage relay pipeline. Verify that intermediate data formats match between stages.',
+        'Evaluate the three labeled prompts as a connected student study-planning workflow. Verify each handoff; do not require a particular output schema.',
     },
     {
       id: 'ch_r4',
       roundId: 'round_4',
-      title: 'Autonomous Cybersecurity Incident Remediation Chain',
+      title: 'Create a College Event Announcement',
       promptType: 'multi_step_workflow',
-      taskOverview:
-        'Build an advanced multi-step prompt chain with self-critique, deterministic rollback, and verification loops.',
-      detailedTask:
-        'Design a comprehensive prompt orchestration chain for zero-day vulnerability containment. The system must autonomously triage threat intelligence, synthesize firewall/kernel patch commands, test the patch in a virtual simulation check, verify zero business disruption, and trigger automatic rollback if side-effects are detected.',
-      targetScenario:
-        'Target incident: Active CVE exploitation attempting memory corruption on edge load balancers.',
+      taskOverview: 'Write three connected prompts to draft, review, and improve a college technical event announcement.',
+      detailedTask: 'Stage 1 drafts an announcement from the supplied details. Stage 2 checks whether all required details are present. Stage 3 uses the review results to fix missing information and unclear wording, then produces the final announcement.',
+      targetScenario: 'Event Name: LEXORA Prompt Engineering Challenge\nDate: 15 October\nTime: 10:00 AM\nVenue: College Auditorium\nRegistration: Online registration required',
       inputConstraints: [
-        'Must specify triage step, containment generation, validation loop, and rollback trigger.',
-        'Must incorporate self-critique prompt with explicit pass/fail threshold.',
-        'Must include a human-in-the-loop authorization gate before production execution.',
+        'Submit three connected prompts: Draft, Review, and Improve.',
+        'The review checks event name, date, time, venue, and registration instructions.',
+        'The improve stage uses the review results and does not invent event information.',
       ],
-      maxTokensOrChars: 4000,
+      maxTokensOrChars: 3000,
       rubric: [
-        {
-          id: 'r4_c1',
-          criterion: 'Orchestration & Verification Loop Design',
-          weight: 35,
-          description: 'Elegance and resilience of automated self-critique and validation loops.',
-        },
-        {
-          id: 'r4_c2',
-          criterion: 'Safety Guards & Rollback Logic',
-          weight: 35,
-          description: 'Deterministic rollback triggers, simulation isolation, and guardrails.',
-        },
-        {
-          id: 'r4_c3',
-          criterion: 'Operational Feasibility & Prompt Engineering Rigor',
-          weight: 30,
-          description: 'Precision of prompt directives, negative prompts, and edge-case handling.',
-        },
+        { id: 'r4_c1', criterion: 'Three Stages Submitted', weight: 15, category: 'task_achievement', description: 'Includes a distinct draft, review, and improve prompt.' },
+        { id: 'r4_c2', criterion: 'Draft Uses Event Details', weight: 15, category: 'task_achievement', description: 'Uses the supplied event details to request an announcement.' },
+        { id: 'r4_c3', criterion: 'Review Checks Required Details', weight: 20, category: 'task_achievement', description: 'Checks event name, date, time, venue, and registration instructions.' },
+        { id: 'r4_c4', criterion: 'Improve Uses Review', weight: 20, category: 'task_achievement', description: 'Uses review findings to address omissions and unclear wording.' },
+        { id: 'r4_c5', criterion: 'Complete Final Announcement', weight: 20, category: 'task_achievement', description: 'Requests a clear, complete final announcement without inventing missing information.' },
+        { id: 'r4_c6', criterion: 'Logical Prompt Chain', weight: 10, category: 'prompt_quality', description: 'Each stage is relevant and passes useful output to the next.' },
       ],
       hiddenExpectedAnswerOrCriteria:
-        'Full prompt chaining specification with cycle limits to prevent infinite loops, schema validations, and fallback states.',
+        'The required details are LEXORA Prompt Engineering Challenge, 15 October, 10:00 AM, College Auditorium, and online registration required. Do not reward invented details.',
       aiEvaluationSystemPrompt:
-        'Score the prompt chaining architecture based on loop safety, self-verification rigor, and rollback mechanics.',
+        'Evaluate the three prompts as a connected announcement workflow. Confirm all five supplied facts are checked and do not accept fabricated event details.',
     },
   ];
 
@@ -452,6 +392,9 @@ class DatabaseManager {
           notifications: parsed.notifications || [],
           auditLogs: parsed.auditLogs || [],
         };
+        if (this.migrateLegacyChallenges()) {
+          await this.persistAsync(this.data);
+        }
       } else {
         // First run: save initial schema to DB
         await this.persistAsync(this.data);
@@ -460,6 +403,83 @@ class DatabaseManager {
     } catch (err) {
       console.error('[DB] Failed to initialize from PostgreSQL:', err);
     }
+  }
+
+  private migrateLegacyChallenges(): boolean {
+    const legacyTitles: Record<string, string> = {
+      ch_r1: 'Target Architecture Deconstruction: Resilient Distributed Cache',
+      ch_r2: 'Enterprise Audit Gateway Specification Compression',
+      ch_r3: 'Tri-Stage Prompt Relay: Financial Anomaly Forensic Pipeline',
+      ch_r4: 'Autonomous Cybersecurity Incident Remediation Chain',
+    };
+    const defaults = getInitialData();
+    const roundsToUpdate = new Set<string>();
+    let migrated = false;
+
+    for (const round of this.data.rounds) {
+      if (!round.scoringWeights) {
+        round.scoringWeights = { ...DEFAULT_SCORING_WEIGHTS };
+        migrated = true;
+      }
+      if (round.completionThreshold === undefined) {
+        round.completionThreshold = DEFAULT_COMPLETION_THRESHOLD;
+        migrated = true;
+      }
+      if (round.leaderboardEligible === undefined) {
+        round.leaderboardEligible = true;
+        migrated = true;
+      }
+      if (round.scoringConfigUpdatedAt === undefined) {
+        round.scoringConfigUpdatedAt = null;
+        migrated = true;
+      }
+    }
+
+    for (const challenge of this.data.challenges) {
+      for (const criterion of challenge.rubric || []) {
+        if (criterion.category) continue;
+        criterion.category = (challenge.roundId === 'round_2' && criterion.id === 'r2_c8') ||
+          (challenge.roundId === 'round_3' && criterion.id === 'r3_c6') ||
+          (challenge.roundId === 'round_4' && criterion.id === 'r4_c6')
+          ? 'prompt_quality'
+          : 'task_achievement';
+        migrated = true;
+      }
+    }
+
+    const roundOne = this.data.challenges.find((challenge) => challenge.id === 'ch_r1');
+    const defaultRoundOne = defaults.challenges.find((challenge) => challenge.id === 'ch_r1');
+    if (roundOne && defaultRoundOne) {
+      roundOne.rubric ||= [];
+      for (const criterion of defaultRoundOne.rubric.filter((item) => item.category === 'prompt_quality')) {
+        if (roundOne.rubric.some((item) => item.id === criterion.id)) continue;
+        roundOne.rubric.push(criterion);
+        migrated = true;
+      }
+    }
+
+    for (const [challengeId, legacyTitle] of Object.entries(legacyTitles)) {
+      const existing = this.data.challenges.find((challenge) => challenge.id === challengeId);
+      if (existing?.title !== legacyTitle) continue;
+
+      const replacement = defaults.challenges.find((challenge) => challenge.id === challengeId);
+      if (!replacement) continue;
+      Object.assign(existing, replacement);
+      roundsToUpdate.add(replacement.roundId);
+      migrated = true;
+    }
+
+    for (const roundId of roundsToUpdate) {
+      const existing = this.data.rounds.find((round) => round.id === roundId);
+      const replacement = defaults.rounds.find((round) => round.id === roundId);
+      if (!existing || !replacement) continue;
+      existing.title = replacement.title;
+      existing.subtitle = replacement.subtitle;
+      existing.description = replacement.description;
+      existing.instructions = replacement.instructions;
+    }
+
+    return migrated;
   }
 
   private async persistAsync(data: DatabaseSchema): Promise<void> {
@@ -585,7 +605,7 @@ class DatabaseManager {
     };
   }
 
-  public computeLeaderboard(roundId?: string): LeaderboardEntry[] {
+  public computeLeaderboard(roundId?: string, publishedOnly = false): LeaderboardEntry[] {
     const studentsMap = new Map<string, StudentProfile>();
     this.data.studentProfiles.forEach((p) => studentsMap.set(p.userId, p));
 
@@ -603,6 +623,9 @@ class DatabaseManager {
         totalAttempts: number;
         roundsCompleted: number;
         isDisqualified: boolean;
+        taskAchievementScore: number;
+        promptQualityScore: number;
+        hasPartialCompletion: boolean;
       }
     >();
 
@@ -620,6 +643,9 @@ class DatabaseManager {
           totalAttempts: 0,
           roundsCompleted: 0,
           isDisqualified: false,
+          taskAchievementScore: 0,
+          promptQualityScore: 0,
+          hasPartialCompletion: false,
         });
       });
 
@@ -629,7 +655,8 @@ class DatabaseManager {
       if (!record) return;
 
       if (rp.isDisqualified) {
-        if (!roundId || roundId === rp.roundId) {
+        const round = this.data.rounds.find((item) => item.id === rp.roundId);
+        if ((!roundId || roundId === rp.roundId) && (!publishedOnly || round?.isResultsPublished)) {
           record.isDisqualified = true;
         }
       }
@@ -640,11 +667,24 @@ class DatabaseManager {
         if (rp.roundId === 'round_3') record.r3 = rp.finalScore;
         if (rp.roundId === 'round_4') record.r4 = rp.finalScore;
 
-        if (!roundId || roundId === rp.roundId) {
+        const round = this.data.rounds.find((item) => item.id === rp.roundId);
+        const rankingEligible = round?.leaderboardEligible !== false && (!publishedOnly || round?.isResultsPublished === true);
+        const inSelectedScope = roundId ? roundId === rp.roundId : rankingEligible;
+
+        const breakdown = rp.scoringBreakdown || this.data.submissions
+          .filter((submission) => submission.roundId === rp.roundId && submission.studentId === rp.studentId)
+          .find((submission) => submission.score === rp.finalScore)?.scoringBreakdown;
+        if (inSelectedScope && rankingEligible) {
+          record.taskAchievementScore += breakdown?.taskAchievementScore || 0;
+          record.promptQualityScore += breakdown?.promptQualityScore || 0;
+          if (breakdown?.completionStatus === 'PARTIALLY_COMPLETED' && !rp.completionAt) record.hasPartialCompletion = true;
+        }
+
+        if (inSelectedScope && rankingEligible) {
           record.totalScore += rp.finalScore;
           record.totalTimeSeconds += rp.timeTakenSeconds || 0;
           record.totalAttempts += rp.attemptsCount;
-          record.roundsCompleted += 1;
+          if (!breakdown || breakdown.completionStatus === 'COMPLETED' || rp.completionAt) record.roundsCompleted += 1;
         }
       }
     });
@@ -669,40 +709,26 @@ class DatabaseManager {
         department: prof.department,
         academicYear: prof.academicYear,
         totalScore: roundId
-          ? (roundId === 'round_1' ? sc.r1 : roundId === 'round_2' ? sc.r2 : roundId === 'round_3' ? sc.r3 : sc.r4) || 0
-          : sc.totalScore,
-        round1Score: sc.r1,
-        round2Score: sc.r2,
-        round3Score: sc.r3,
-        round4Score: sc.r4,
+          ? (this.data.rounds.find((round) => round.id === roundId)?.leaderboardEligible === false
+            ? 0
+            : (roundId === 'round_1' ? sc.r1 : roundId === 'round_2' ? sc.r2 : roundId === 'round_3' ? sc.r3 : sc.r4) || 0)
+          : roundToTwo(sc.totalScore),
+        round1Score: publishedOnly && !this.data.rounds.find((round) => round.id === 'round_1')?.isResultsPublished ? null : sc.r1,
+        round2Score: publishedOnly && !this.data.rounds.find((round) => round.id === 'round_2')?.isResultsPublished ? null : sc.r2,
+        round3Score: publishedOnly && !this.data.rounds.find((round) => round.id === 'round_3')?.isResultsPublished ? null : sc.r3,
+        round4Score: publishedOnly && !this.data.rounds.find((round) => round.id === 'round_4')?.isResultsPublished ? null : sc.r4,
         roundsCompleted: sc.roundsCompleted,
         totalTimeSeconds: sc.totalTimeSeconds,
         totalAttempts: sc.totalAttempts,
         qualificationStatus,
         isTopThree: false,
+        taskAchievementScore: roundToTwo(sc.taskAchievementScore),
+        promptQualityScore: roundToTwo(sc.promptQualityScore),
+        completionStatus: sc.roundsCompleted === 0 ? 'NOT_STARTED' : sc.hasPartialCompletion ? 'PARTIALLY_COMPLETED' : 'COMPLETED',
       });
     });
 
-    // Official ranking rules:
-    // 1. Eligibility (Non-disqualified first)
-    // 2. Higher official score
-    // 3. Lower completion time
-    // 4. Fewer attempts used
-    entries.sort((a, b) => {
-      if (a.qualificationStatus === 'DISQUALIFIED' && b.qualificationStatus !== 'DISQUALIFIED') return 1;
-      if (b.qualificationStatus === 'DISQUALIFIED' && a.qualificationStatus !== 'DISQUALIFIED') return -1;
-      if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
-      if (a.totalTimeSeconds !== b.totalTimeSeconds) return a.totalTimeSeconds - b.totalTimeSeconds;
-      return a.totalAttempts - b.totalAttempts;
-    });
-
-    // Assign ranks
-    entries.forEach((item, index) => {
-      item.rank = index + 1;
-      item.isTopThree = index < 3 && item.qualificationStatus !== 'DISQUALIFIED' && item.totalScore > 0;
-    });
-
-    return entries;
+    return rankLeaderboardEntries(entries);
   }
 }
 

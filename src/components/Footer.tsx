@@ -49,7 +49,7 @@ export const Footer: React.FC = () => {
               </li>
               <li className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#FFA5AB]" />
-                <span>Round 04: Upskilling — Prompt Chaining</span>
+                <span>Round 04: Prompt Chaining</span>
               </li>
             </ul>
           </div>
@@ -76,7 +76,7 @@ export const Footer: React.FC = () => {
                 </Link>
               </li>
               <li>
-                <Link to="/login" className="hover:text-[#FFA5AB] transition-colors flex items-center gap-1.5">
+                <Link to="/admin-login" className="hover:text-[#FFA5AB] transition-colors flex items-center gap-1.5">
                   <Shield className="w-3 h-3 text-[#DA627D]" />
                   Administrator Control Console
                 </Link>

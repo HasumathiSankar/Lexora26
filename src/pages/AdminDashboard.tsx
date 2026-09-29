@@ -158,6 +158,34 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleSaveScoringConfig = async (round: Round) => {
+    const weights = round.scoringWeights || {
+      promptQuality: 50,
+      taskAchievement: 30,
+      timeEfficiency: 10,
+      attemptEfficiency: 10,
+    };
+    const totalWeight = Object.values(weights).reduce((sum, value) => sum + Number(value), 0);
+    if (Math.abs(totalWeight - 100) >= 0.001) {
+      setErrorMessage('Scoring weights must total exactly 100%.');
+      return;
+    }
+    try {
+      const response = await api.updateRoundSettings(round.id, {
+        durationMinutes: Number(round.durationMinutes),
+        maxAttempts: Number(round.maxAttempts),
+        scoringWeights: weights,
+        completionThreshold: Number(round.completionThreshold ?? 80),
+        leaderboardEligible: round.leaderboardEligible !== false,
+      });
+      setRounds((current) => current.map((item) => item.id === round.id ? response.round : item));
+      setActionMessage(`Scoring settings saved for ${round.title}.`);
+      setErrorMessage(null);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to save scoring settings.');
+    }
+  };
+
   // Score override submission
   const handleScoreOverride = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -551,6 +579,45 @@ export const AdminDashboard: React.FC = () => {
                         </span>
                       </div>
                     </div>
+
+                    <div className="border-t border-[#F9DBBD]/60 pt-4 space-y-4">
+                      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                        <label className="text-[10px] font-bold uppercase text-gray-600">
+                          Time limit (min)
+                          <input type="number" min={1} step={1} value={round.durationMinutes} onChange={(e) => setRounds((current) => current.map((item) => item.id === round.id ? { ...item, durationMinutes: Number(e.target.value) } : item))} className="mt-1 w-full rounded-lg border border-gray-300 p-2 text-xs font-normal text-gray-900" />
+                        </label>
+                        <label className="text-[10px] font-bold uppercase text-gray-600">
+                          Max attempts
+                          <input type="number" min={1} step={1} value={round.maxAttempts} onChange={(e) => setRounds((current) => current.map((item) => item.id === round.id ? { ...item, maxAttempts: Number(e.target.value) } : item))} className="mt-1 w-full rounded-lg border border-gray-300 p-2 text-xs font-normal text-gray-900" />
+                        </label>
+                        {([
+                          ['promptQuality', 'Prompt quality'],
+                          ['taskAchievement', 'Achievement'],
+                          ['timeEfficiency', 'Time'],
+                          ['attemptEfficiency', 'Attempts'],
+                        ] as const).map(([key, label]) => (
+                          <label key={key} className="text-[10px] font-bold uppercase text-gray-600">
+                            {label} (%)
+                            <input type="number" min={0} max={100} step={0.1} value={round.scoringWeights?.[key] ?? ({ promptQuality: 50, taskAchievement: 30, timeEfficiency: 10, attemptEfficiency: 10 }[key])} onChange={(e) => setRounds((current) => current.map((item) => item.id === round.id ? { ...item, scoringWeights: { ...(item.scoringWeights || { promptQuality: 50, taskAchievement: 30, timeEfficiency: 10, attemptEfficiency: 10 }), [key]: Number(e.target.value) } } : item))} className="mt-1 w-full rounded-lg border border-gray-300 p-2 text-xs font-normal text-gray-900" />
+                          </label>
+                        ))}
+                      </div>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
+                          <label className="inline-flex items-center gap-2 font-medium text-gray-700">
+                            <input type="checkbox" checked={round.leaderboardEligible !== false} onChange={(e) => setRounds((current) => current.map((item) => item.id === round.id ? { ...item, leaderboardEligible: e.target.checked } : item))} />
+                            Eligible for leaderboard
+                          </label>
+                          <label className="inline-flex items-center gap-2 font-medium text-gray-700">
+                            Completion threshold
+                            <input type="number" min={1} max={100} step={0.1} value={round.completionThreshold ?? 80} onChange={(e) => setRounds((current) => current.map((item) => item.id === round.id ? { ...item, completionThreshold: Number(e.target.value) } : item))} className="w-20 rounded-lg border border-gray-300 p-2 text-xs" />
+                          </label>
+                          <span className="text-[10px] text-gray-500">Weight total: {Object.values(round.scoringWeights || { promptQuality: 50, taskAchievement: 30, timeEfficiency: 10, attemptEfficiency: 10 }).reduce((sum, value) => sum + Number(value), 0)}%</span>
+                        </div>
+                        <button onClick={() => handleSaveScoringConfig(round)} className="rounded-lg bg-[#A53860] px-4 py-2 text-xs font-bold text-white hover:bg-[#822446]">Save Scoring Settings</button>
+                      </div>
+                      <p className="text-[10px] text-gray-500">Last scoring update: {round.scoringConfigUpdatedAt ? new Date(round.scoringConfigUpdatedAt).toLocaleString() : 'Default settings'}</p>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -640,6 +707,33 @@ export const AdminDashboard: React.FC = () => {
                     />
                   </div>
 
+                  <div className="space-y-3 rounded-xl border border-[#F9DBBD] p-4">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-[#A53860]">Round-specific evaluation criteria</h4>
+                    {currentChallenge.rubric.map((criterion, index) => (
+                      <div key={criterion.id} className="grid grid-cols-1 gap-2 border-t border-[#F9DBBD]/60 pt-3 sm:grid-cols-12">
+                        <label className="text-[10px] font-bold text-gray-600 sm:col-span-3">
+                          Criterion
+                          <input value={criterion.criterion} onChange={(e) => setCurrentChallenge({ ...currentChallenge, rubric: currentChallenge.rubric.map((item, itemIndex) => itemIndex === index ? { ...item, criterion: e.target.value } : item) })} className="mt-1 w-full rounded-lg border border-gray-300 p-2 text-xs font-normal text-gray-900" />
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600 sm:col-span-5">
+                          Evaluation guidance
+                          <input value={criterion.description} onChange={(e) => setCurrentChallenge({ ...currentChallenge, rubric: currentChallenge.rubric.map((item, itemIndex) => itemIndex === index ? { ...item, description: e.target.value } : item) })} className="mt-1 w-full rounded-lg border border-gray-300 p-2 text-xs font-normal text-gray-900" />
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600 sm:col-span-2">
+                          Weight
+                          <input type="number" min={0} step={0.1} value={criterion.weight} onChange={(e) => setCurrentChallenge({ ...currentChallenge, rubric: currentChallenge.rubric.map((item, itemIndex) => itemIndex === index ? { ...item, weight: Number(e.target.value) } : item) })} className="mt-1 w-full rounded-lg border border-gray-300 p-2 text-xs font-normal text-gray-900" />
+                        </label>
+                        <label className="text-[10px] font-bold text-gray-600 sm:col-span-2">
+                          Score component
+                          <select value={criterion.category || 'task_achievement'} onChange={(e) => setCurrentChallenge({ ...currentChallenge, rubric: currentChallenge.rubric.map((item, itemIndex) => itemIndex === index ? { ...item, category: e.target.value as 'prompt_quality' | 'task_achievement' } : item) })} className="mt-1 w-full rounded-lg border border-gray-300 p-2 text-xs font-normal text-gray-900">
+                            <option value="prompt_quality">Prompt quality</option>
+                            <option value="task_achievement">Task achievement</option>
+                          </select>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+
                   <div>
                     <label className="block text-[11px] font-bold uppercase tracking-wider text-[#A53860] mb-1">
                       Hidden Expected Answer / Secret Criteria (Admin & AI Judge ONLY - Never exposed to student)
@@ -651,6 +745,48 @@ export const AdminDashboard: React.FC = () => {
                       className="w-full p-3 rounded-xl border border-[#DA627D] bg-[#FCF8F5] text-xs font-mono text-[#220914] focus:outline-none"
                     />
                   </div>
+
+                  {currentChallenge.referenceImages?.map((image, index) => (
+                    <div key={`${image.title}-${index}`} className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-xl border border-[#F9DBBD] p-3">
+                      <label className="text-[11px] font-bold text-gray-700">
+                        Reference image title
+                        <input
+                          type="text"
+                          value={image.title}
+                          onChange={(e) => setCurrentChallenge({
+                            ...currentChallenge,
+                            referenceImages: currentChallenge.referenceImages?.map((item, itemIndex) => itemIndex === index ? { ...item, title: e.target.value } : item),
+                          })}
+                          className="mt-1 w-full rounded-lg border border-gray-300 p-2 text-xs font-normal"
+                        />
+                      </label>
+                      <label className="text-[11px] font-bold text-gray-700">
+                        Image asset path
+                        <input
+                          type="text"
+                          value={image.src}
+                          onChange={(e) => setCurrentChallenge({
+                            ...currentChallenge,
+                            referenceImages: currentChallenge.referenceImages?.map((item, itemIndex) => itemIndex === index ? { ...item, src: e.target.value } : item),
+                          })}
+                          className="mt-1 w-full rounded-lg border border-gray-300 p-2 text-xs font-normal"
+                          placeholder="/reference-images/image-1.svg"
+                        />
+                      </label>
+                      <label className="text-[11px] font-bold text-gray-700">
+                        Accessible image description
+                        <input
+                          type="text"
+                          value={image.alt}
+                          onChange={(e) => setCurrentChallenge({
+                            ...currentChallenge,
+                            referenceImages: currentChallenge.referenceImages?.map((item, itemIndex) => itemIndex === index ? { ...item, alt: e.target.value } : item),
+                          })}
+                          className="mt-1 w-full rounded-lg border border-gray-300 p-2 text-xs font-normal"
+                        />
+                      </label>
+                    </div>
+                  ))}
 
                   <div className="pt-2 flex justify-end">
                     <button
@@ -743,7 +879,7 @@ export const AdminDashboard: React.FC = () => {
                         <td className="p-3 text-gray-500">{sub.timeTakenSeconds}s</td>
                         <td className="p-3">
                           <span className="font-serif font-bold text-sm text-[#DA627D]">
-                            {sub.score !== null ? sub.score : '—'}
+                            {sub.score !== null ? sub.score.toFixed(2) : '—'}
                           </span>
                           <span className="text-gray-400 text-[10px]">/100</span>
                         </td>
@@ -1066,7 +1202,7 @@ export const AdminDashboard: React.FC = () => {
                         <td className="p-3 text-gray-600">{e.collegeName}</td>
                         <td className="p-3">{e.roundsCompleted}/4</td>
                         <td className="p-3 text-gray-500">{e.totalTimeSeconds}s</td>
-                        <td className="p-3 font-serif text-base font-bold text-[#DA627D]">{e.totalScore} pts</td>
+                        <td className="p-3 font-serif text-base font-bold text-[#DA627D]">{e.totalScore.toFixed(2)} pts</td>
                         <td className="p-3">
                           <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
                             e.qualificationStatus === 'DISQUALIFIED' ? 'bg-red-600 text-white' : 'bg-emerald-100 text-emerald-800'

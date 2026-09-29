@@ -9,6 +9,7 @@ import { StudentDashboard } from './pages/StudentDashboard.tsx';
 import { ChallengeWorkspace } from './pages/ChallengeWorkspace.tsx';
 import { AdminDashboard } from './pages/AdminDashboard.tsx';
 import { PublicLeaderboardPage } from './pages/PublicLeaderboardPage.tsx';
+import { FourRoundsPage } from './pages/FourRoundsPage.tsx';
 
 const StudentRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
@@ -70,6 +71,8 @@ function AppShell() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/register" element={<AuthPage initialMode="register" initialRole="student" />} />
           <Route path="/login" element={<AuthPage initialMode="login" initialRole="student" />} />
+          <Route path="/admin-login" element={<AuthPage initialMode="login" initialRole="admin" />} />
+          <Route path="/rounds" element={<FourRoundsPage />} />
           <Route path="/leaderboard" element={<PublicLeaderboardPage />} />
 
           <Route

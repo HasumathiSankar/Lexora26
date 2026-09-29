@@ -6,6 +6,7 @@ import crypto from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import { db, hashPassword, verifyPassword } from './src/server/db.ts';
 import { evaluateSubmission } from './src/server/ai.ts';
+import { areScoringWeightsValid, calculateCompetitionScore, createInFlightSubmissionLock, DEFAULT_SCORING_WEIGHTS, roundToTwo } from './src/server/scoring.ts';
 import type { User, StudentProfile, RoundParticipant, Submission } from './src/shared/types.ts';
 
 dotenv.config();
@@ -19,9 +20,14 @@ const PORT = Number(process.env.PORT || 3000);
 app.use(express.json({ limit: '10mb' }));
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_do_not_use_in_prod';
+const inFlightSubmissionLock = createInFlightSubmissionLock();
 
 function generateToken(userId: string): string {
   return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '24h' });
+}
+
+function sanitizeStudentSubmission(submission: Submission): Submission {
+  return { ...submission, criterionScores: [], idempotencyKey: undefined };
 }
 
 // Authentication middleware
@@ -400,7 +406,33 @@ app.put('/api/admin/rounds/:id', authenticate, requireAdmin, (req: Authenticated
     qualificationRules,
     strictTabSwitchDisqualification,
     maxTabSwitchWarnings,
+    scoringWeights,
+    completionThreshold,
+    leaderboardEligible,
   } = req.body;
+
+  if (durationMinutes !== undefined && (!Number.isInteger(Number(durationMinutes)) || Number(durationMinutes) < 1)) {
+    res.status(400).json({ error: 'Challenge time limit must be a positive whole number of minutes.' });
+    return;
+  }
+  if (maxAttempts !== undefined && (!Number.isInteger(Number(maxAttempts)) || Number(maxAttempts) < 1)) {
+    res.status(400).json({ error: 'Attempt limit must be a positive whole number.' });
+    return;
+  }
+  if (scoringWeights !== undefined && (!scoringWeights || !areScoringWeightsValid(scoringWeights))) {
+    res.status(400).json({ error: 'Scoring weights must be non-negative and total exactly 100%.' });
+    return;
+  }
+  if (completionThreshold !== undefined && (!Number.isFinite(Number(completionThreshold)) || Number(completionThreshold) < 1 || Number(completionThreshold) > 100)) {
+    res.status(400).json({ error: 'Completion threshold must be between 1 and 100.' });
+    return;
+  }
+  if (leaderboardEligible !== undefined && typeof leaderboardEligible !== 'boolean') {
+    res.status(400).json({ error: 'Leaderboard eligibility must be a boolean value.' });
+    return;
+  }
+
+  const scoringConfigChanged = scoringWeights !== undefined || completionThreshold !== undefined || leaderboardEligible !== undefined || durationMinutes !== undefined || maxAttempts !== undefined;
 
   if (title) round.title = title;
   if (subtitle) round.subtitle = subtitle;
@@ -414,6 +446,10 @@ app.put('/api/admin/rounds/:id', authenticate, requireAdmin, (req: Authenticated
   if (qualificationRules) round.qualificationRules = qualificationRules;
   if (strictTabSwitchDisqualification !== undefined) round.strictTabSwitchDisqualification = Boolean(strictTabSwitchDisqualification);
   if (maxTabSwitchWarnings !== undefined) round.maxTabSwitchWarnings = Number(maxTabSwitchWarnings);
+  if (scoringWeights !== undefined) round.scoringWeights = { ...scoringWeights };
+  if (completionThreshold !== undefined) round.completionThreshold = Number(completionThreshold);
+  if (leaderboardEligible !== undefined) round.leaderboardEligible = leaderboardEligible;
+  if (scoringConfigChanged) round.scoringConfigUpdatedAt = new Date().toISOString();
 
   db.logAudit(
     req.user!.id,
@@ -422,7 +458,7 @@ app.put('/api/admin/rounds/:id', authenticate, requireAdmin, (req: Authenticated
     'ROUND_CONFIG_UPDATED',
     'ROUND',
     round.id,
-    `Updated configuration for Round ${round.roundNumber}`
+    `Updated configuration for Round ${round.roundNumber}${scoringConfigChanged ? `; scoring configuration timestamp ${round.scoringConfigUpdatedAt}` : ''}`
   );
 
   db.save();
@@ -455,8 +491,8 @@ app.get('/api/rounds/:id/challenge', authenticate, (req: AuthenticatedRequest, r
 
   // Sanitize for students (never expose hidden criteria or system prompts)
   if (req.user?.role === 'student') {
-    const { hiddenExpectedAnswerOrCriteria, aiEvaluationSystemPrompt, ...safeChallenge } = challenge;
-    res.json({ challenge: safeChallenge, round });
+    const { hiddenExpectedAnswerOrCriteria, aiEvaluationSystemPrompt, rubric, ...safeChallenge } = challenge;
+    res.json({ challenge: { ...safeChallenge, rubric: [] }, round });
     return;
   }
 
@@ -479,9 +515,19 @@ app.put('/api/admin/challenges/:id', authenticate, requireAdmin, (req: Authentic
     inputConstraints,
     maxTokensOrChars,
     rubric,
+    referenceImages,
     hiddenExpectedAnswerOrCriteria,
     aiEvaluationSystemPrompt,
   } = req.body;
+
+  if (rubric !== undefined && (!Array.isArray(rubric) || rubric.some((criterion: any) =>
+    !criterion || typeof criterion.id !== 'string' || typeof criterion.criterion !== 'string' ||
+    typeof criterion.description !== 'string' || !Number.isFinite(Number(criterion.weight)) || Number(criterion.weight) < 0 ||
+    (criterion.category !== undefined && !['prompt_quality', 'task_achievement'].includes(criterion.category))
+  ))) {
+    res.status(400).json({ error: 'Evaluation criteria must include valid names, guidance, non-negative weights, and score components.' });
+    return;
+  }
 
   if (title) challenge.title = title;
   if (taskOverview) challenge.taskOverview = taskOverview;
@@ -489,9 +535,20 @@ app.put('/api/admin/challenges/:id', authenticate, requireAdmin, (req: Authentic
   if (targetScenario) challenge.targetScenario = targetScenario;
   if (Array.isArray(inputConstraints)) challenge.inputConstraints = inputConstraints;
   if (maxTokensOrChars !== undefined) challenge.maxTokensOrChars = maxTokensOrChars ? Number(maxTokensOrChars) : null;
-  if (Array.isArray(rubric)) challenge.rubric = rubric;
+  if (Array.isArray(rubric)) {
+    challenge.rubric = rubric.map((criterion: any) => ({ ...criterion, weight: Number(criterion.weight) }));
+  }
+  if (Array.isArray(referenceImages)) {
+    challenge.referenceImages = referenceImages.filter(
+      (image: any) => image && typeof image.title === 'string' && typeof image.src === 'string' && typeof image.alt === 'string'
+    );
+  }
   if (hiddenExpectedAnswerOrCriteria !== undefined) challenge.hiddenExpectedAnswerOrCriteria = hiddenExpectedAnswerOrCriteria;
   if (aiEvaluationSystemPrompt !== undefined) challenge.aiEvaluationSystemPrompt = aiEvaluationSystemPrompt;
+  if (rubric !== undefined || inputConstraints !== undefined || maxTokensOrChars !== undefined || hiddenExpectedAnswerOrCriteria !== undefined || aiEvaluationSystemPrompt !== undefined) {
+    const round = db.rounds.find((item) => item.id === challenge.roundId);
+    if (round) round.scoringConfigUpdatedAt = new Date().toISOString();
+  }
 
   db.logAudit(
     req.user!.id,
@@ -602,7 +659,7 @@ app.get('/api/rounds/:id/my-status', authenticate, (req: AuthenticatedRequest, r
 
   res.json({
     participant,
-    submissions: userSubmissions,
+    submissions: user.role === 'student' ? userSubmissions.map(sanitizeStudentSubmission) : userSubmissions,
     remainingSeconds,
     roundStatus: round.status,
     isResultsPublished: round.isResultsPublished,
@@ -611,6 +668,7 @@ app.get('/api/rounds/:id/my-status', authenticate, (req: AuthenticatedRequest, r
 
 // POST /api/rounds/:id/submit (Enforce 2-attempt limit, timer expiration, evaluate submission)
 app.post('/api/rounds/:id/submit', authenticate, async (req: AuthenticatedRequest, res: Response) => {
+  let lockedSubmissionKey: string | null = null;
   try {
     const user = req.user!;
     if (user.role !== 'student') {
@@ -621,6 +679,28 @@ app.post('/api/rounds/:id/submit', authenticate, async (req: AuthenticatedReques
     const round = db.rounds.find((r) => r.id === req.params.id);
     if (!round) {
       res.status(404).json({ error: 'Round not found' });
+      return;
+    }
+
+    const requestKey = typeof req.body.idempotencyKey === 'string' ? req.body.idempotencyKey.trim() : '';
+    if (requestKey) {
+      if (requestKey.length > 128) {
+        res.status(400).json({ error: 'Invalid submission request key.' });
+        return;
+      }
+      const duplicate = db.submissions.find((submission) =>
+        submission.roundId === round.id && submission.studentId === user.id && submission.idempotencyKey === requestKey
+      );
+      if (duplicate) {
+        const participant = db.roundParticipants.find((item) => item.roundId === round.id && item.studentId === user.id);
+        res.status(200).json({ success: true, submission: sanitizeStudentSubmission(duplicate), participant, message: 'This submission was already recorded.' });
+        return;
+      }
+    }
+    lockedSubmissionKey = `${user.id}:${round.id}`;
+    if (!inFlightSubmissionLock.acquire(lockedSubmissionKey)) {
+      lockedSubmissionKey = null;
+      res.status(409).json({ error: 'A submission for this round is already being evaluated. Please wait for its result.' });
       return;
     }
 
@@ -671,10 +751,19 @@ app.post('/api/rounds/:id/submit', authenticate, async (req: AuthenticatedReques
     const attemptNumber = participant.attemptsCount + 1;
     const now = new Date();
     const startTime = participant.startedAt ? new Date(participant.startedAt).getTime() : now.getTime();
-    const timeTakenSeconds = Math.max(1, Math.round((now.getTime() - startTime) / 1000));
+    const timeTakenSeconds = Math.max(0, Math.round((now.getTime() - startTime) / 1000));
 
     // Evaluate submission with AI / Rubric engine
     const evaluation = await evaluateSubmission(challenge, promptSubmission, secondaryOutput);
+    const scoreResult = calculateCompetitionScore({
+      promptQualityScore: evaluation.promptQualityScore,
+      taskAchievementScore: evaluation.taskAchievementScore,
+      elapsedSeconds: timeTakenSeconds,
+      timeLimitMinutes: round.durationMinutes,
+      attemptsUsed: attemptNumber,
+      weights: round.scoringWeights || DEFAULT_SCORING_WEIGHTS,
+      completionThreshold: round.completionThreshold,
+    });
 
     const submissionId = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     const studentProfile = db.studentProfiles.find((p) => p.userId === user.id)!;
@@ -694,13 +783,15 @@ app.post('/api/rounds/:id/submit', authenticate, async (req: AuthenticatedReques
       submittedAt: now.toISOString(),
       timeTakenSeconds,
       status: 'EVALUATED',
-      score: evaluation.score,
-      maxScore: evaluation.maxScore,
+      score: scoreResult.score,
+      maxScore: 100,
       feedback: evaluation.feedback,
       criterionScores: evaluation.criterionScores,
       evaluationMethodUsed: round.evaluationMethod,
       evaluatedBy: evaluation.evaluatedBy,
       evaluatedAt: evaluation.evaluatedAt,
+      scoringBreakdown: scoreResult.breakdown,
+      idempotencyKey: requestKey || undefined,
     };
 
     db.submissions.push(submission);
@@ -708,15 +799,26 @@ app.post('/api/rounds/:id/submit', authenticate, async (req: AuthenticatedReques
     // Update participant record
     participant.attemptsCount = attemptNumber;
     participant.remainingAttempts = Math.max(0, round.maxAttempts - attemptNumber);
-    participant.highestScore = Math.max(participant.highestScore || 0, evaluation.score);
+    const isNewBest = participant.highestScore === null || scoreResult.score > participant.highestScore;
+    participant.highestScore = Math.max(participant.highestScore || 0, scoreResult.score);
     participant.finalScore = participant.highestScore;
-    participant.timeTakenSeconds = timeTakenSeconds;
+    if (scoreResult.breakdown.completionStatus === 'COMPLETED' && !participant.completionAt) {
+      participant.completionAt = now.toISOString();
+      participant.timeTakenSeconds = timeTakenSeconds;
+    } else if (!participant.completionAt) {
+      participant.timeTakenSeconds = timeTakenSeconds;
+    }
+    if (isNewBest) {
+      participant.scoringBreakdown = scoreResult.breakdown;
+      participant.promptQualityScore = scoreResult.breakdown.promptQualityScore;
+      participant.taskAchievementScore = scoreResult.breakdown.taskAchievementScore;
+    }
     participant.status = participant.remainingAttempts === 0 ? 'COMPLETED' as any : 'EVALUATED';
 
     db.addNotification(
       user.id,
       `Attempt ${attemptNumber} Evaluated`,
-      `Your submission for ${round.title} (Attempt ${attemptNumber} of ${round.maxAttempts}) was scored. ${participant.remainingAttempts} attempt(s) remaining.`,
+      `Your submission for ${round.title} (Attempt ${attemptNumber} of ${round.maxAttempts}) scored ${scoreResult.score.toFixed(2)}/100. ${participant.remainingAttempts} attempt(s) remaining.`,
       'EVALUATED'
     );
 
@@ -727,14 +829,14 @@ app.post('/api/rounds/:id/submit', authenticate, async (req: AuthenticatedReques
       'SUBMISSION_RECORDED',
       'SUBMISSION',
       submissionId,
-      `Attempt ${attemptNumber}/${round.maxAttempts} submitted for Round ${round.roundNumber}. Score: ${evaluation.score}/100.`
+      `Attempt ${attemptNumber}/${round.maxAttempts} submitted for Round ${round.roundNumber}. Score: ${scoreResult.score.toFixed(2)}/100.`
     );
 
     db.save();
 
     res.status(201).json({
       success: true,
-      submission,
+      submission: sanitizeStudentSubmission(submission),
       participant,
       message:
         participant.remainingAttempts > 0
@@ -744,6 +846,8 @@ app.post('/api/rounds/:id/submit', authenticate, async (req: AuthenticatedReques
   } catch (err) {
     console.error('Submission handling error:', err);
     res.status(500).json({ error: 'Failed to process submission' });
+  } finally {
+    if (lockedSubmissionKey) inFlightSubmissionLock.release(lockedSubmissionKey);
   }
 });
 
@@ -942,8 +1046,14 @@ app.put('/api/admin/submissions/:id/override', authenticate, requireAdmin, (req:
   const participant = db.roundParticipants.find((p) => p.roundId === submission.roundId && p.studentId === submission.studentId);
   if (participant) {
     const allSubs = db.submissions.filter((s) => s.roundId === submission.roundId && s.studentId === submission.studentId);
+    const bestSubmission = [...allSubs].sort((a, b) => (b.score || 0) - (a.score || 0))[0];
     participant.highestScore = Math.max(...allSubs.map((s) => s.score || 0));
     participant.finalScore = participant.highestScore;
+    if (bestSubmission?.scoringBreakdown) {
+      participant.scoringBreakdown = bestSubmission.scoringBreakdown;
+      participant.promptQualityScore = bestSubmission.scoringBreakdown.promptQualityScore;
+      participant.taskAchievementScore = bestSubmission.scoringBreakdown.taskAchievementScore;
+    }
   }
 
   db.logAudit(
@@ -1008,7 +1118,7 @@ app.get('/api/leaderboard', (req: Request, res: Response) => {
     }
   }
 
-  const entries = db.computeLeaderboard(roundId);
+  const entries = db.computeLeaderboard(roundId, !isAdmin);
   res.json({
     published: true,
     entries,
@@ -1018,8 +1128,20 @@ app.get('/api/leaderboard', (req: Request, res: Response) => {
 // GET /api/results/public (Public results page data)
 app.get('/api/results/public', (_req: Request, res: Response) => {
   const publishedRounds = db.rounds.filter((r) => r.isResultsPublished);
-  const overallLeaderboard = db.computeLeaderboard();
+  const overallLeaderboard = db.computeLeaderboard(undefined, true);
   const topWinners = overallLeaderboard.filter((e) => e.isTopThree);
+  const eligible = overallLeaderboard.filter((entry) => entry.qualificationStatus !== 'DISQUALIFIED' && entry.roundsCompleted > 0);
+  const highestScore = eligible.length
+    ? { studentName: [...eligible].sort((a, b) => b.totalScore - a.totalScore)[0].studentName, score: Math.max(...eligible.map((entry) => entry.totalScore)) }
+    : null;
+  const completedEntries = eligible.filter((entry) => entry.completionStatus === 'COMPLETED' && entry.totalTimeSeconds > 0);
+  const fastestEntry = [...completedEntries].sort((a, b) => a.totalTimeSeconds - b.totalTimeSeconds)[0];
+  const fewestAttemptsEntry = [...eligible].filter((entry) => entry.totalAttempts > 0).sort((a, b) => a.totalAttempts - b.totalAttempts)[0];
+  const competitionStatistics = {
+    highestScore,
+    fastestCompletion: fastestEntry ? { studentName: fastestEntry.studentName, seconds: fastestEntry.totalTimeSeconds } : null,
+    fewestAttempts: fewestAttemptsEntry ? { studentName: fewestAttemptsEntry.studentName, attempts: fewestAttemptsEntry.totalAttempts } : null,
+  };
 
   // College medal standings
   const collegeMap = new Map<string, { college: string; totalScore: number; participantsCount: number; gold: number; silver: number; bronze: number }>();
@@ -1048,6 +1170,7 @@ app.get('/api/results/public', (_req: Request, res: Response) => {
   res.json({
     publishedRounds,
     topWinners,
+    competitionStatistics,
     collegeStandings,
     overallLeaderboard: publishedRounds.length > 0 ? overallLeaderboard : [],
   });

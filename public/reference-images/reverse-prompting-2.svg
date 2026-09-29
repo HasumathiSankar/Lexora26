@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 600" role="img" aria-labelledby="title desc">
+  <title id="title">A quiet evening study desk</title>
+  <desc id="desc">A storybook illustration of an open book lit by a brass lamp beside a night window and a small plant.</desc>
+  <defs>
+    <linearGradient id="room" x2="0" y2="1"><stop stop-color="#17253b"/><stop offset="1" stop-color="#32465b"/></linearGradient>
+    <linearGradient id="desk" x2="0" y2="1"><stop stop-color="#805944"/><stop offset="1" stop-color="#4c342c"/></linearGradient>
+    <radialGradient id="glow"><stop stop-color="#f8d988" stop-opacity=".82"/><stop offset="1" stop-color="#f3b95b" stop-opacity="0"/></radialGradient>
+    <linearGradient id="shade" x2="0" y2="1"><stop stop-color="#e8bd69"/><stop offset="1" stop-color="#a87642"/></linearGradient>
+  </defs>
+  <rect width="960" height="600" fill="url(#room)"/>
+  <rect x="588" y="54" width="292" height="282" rx="8" fill="#101d32" stroke="#a17c5c" stroke-width="13"/>
+  <rect x="608" y="74" width="252" height="242" fill="#243d62"/>
+  <path d="M608 219h252v97H608z" fill="#192c49"/>
+  <path d="M730 74v242M608 195h252" stroke="#a17c5c" stroke-width="10"/>
+  <circle cx="799" cy="123" r="23" fill="#f4dfab"/>
+  <circle cx="790" cy="115" r="24" fill="#243d62"/>
+  <circle cx="658" cy="136" r="4" fill="#fff1cb"/><circle cx="696" cy="108" r="3" fill="#fff1cb"/><circle cx="828" cy="178" r="4" fill="#fff1cb"/>
+  <path d="M620 297q25-48 54 0m16 0q29-61 61 0m89 0q18-36 38 0" fill="none" stroke="#607458" stroke-width="13" stroke-linecap="round"/>
+  <ellipse cx="478" cy="434" rx="425" ry="140" fill="url(#glow)"/>
+  <path d="M0 384c245-25 559 20 960-12v228H0z" fill="url(#desk)"/>
+  <path d="M0 430c226-12 502 24 960-8M0 517c240-14 575 22 960-6" fill="none" stroke="#bb8b65" stroke-width="5" opacity=".42"/>
+  <ellipse cx="448" cy="450" rx="184" ry="27" fill="#281e20" opacity=".4"/>
+  <path d="M266 354q91-49 190 9v111q-95-57-190-6z" fill="#eee0b7" stroke="#a9946b" stroke-width="5"/>
+  <path d="M456 363q95-58 193-13v111q-100-45-193 13z" fill="#f7eac9" stroke="#a9946b" stroke-width="5"/>
+  <path d="M456 365v107M294 371q57-23 126 12m-122 13q61-23 122 11m64 7q-53-20-101-4m121-40q65-35 139-18m-132 48q61-34 130-18m-130 47q62-33 129-16" fill="none" stroke="#baaa83" stroke-width="3" opacity=".85"/>
+  <path d="M777 376h103v88H777z" fill="#b66e48"/>
+  <path d="M766 377h125l-16 22h-94z" fill="#d18b5d"/>
+  <path d="M787 375q-22-62 4-99m13 98q-3-79 37-111m-27 108q31-72 70-68m-86 66q-44-57-64-47" fill="none" stroke="#6f9a67" stroke-width="10" stroke-linecap="round"/>
+  <path d="M798 302q-28-28-3-42 27 18 3 42m25-30q1-37 31-34 7 30-31 34m-50 17q-36-20-20-45 31 7 20 45m83 24q18-34 42-17-1 31-42 17" fill="#7fa476"/>
+  <path d="M134 352h110l-12 35h-85z" fill="url(#shade)" stroke="#d3a458" stroke-width="4"/>
+  <path d="M187 386v97m-43 0h87" fill="none" stroke="#bc8a4a" stroke-width="12" stroke-linecap="round"/>
+  <path d="M151 350q39-95 77 0z" fill="#dbad5d" stroke="#f0cd7c" stroke-width="5"/>
+  <path d="M187 279v63" stroke="#dfb762" stroke-width="7"/>
+  <circle cx="187" cy="350" r="10" fill="#fff0b4"/>
+  <path d="M138 366q47 10 99 0" fill="none" stroke="#f7d891" stroke-width="6" opacity=".7"/>
+  <path d="M125 496h733" stroke="#d29d69" stroke-width="4" opacity=".4"/>
+</svg>

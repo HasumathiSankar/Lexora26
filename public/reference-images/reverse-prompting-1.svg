@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 600" role="img" aria-labelledby="title desc">
+  <title id="title">Lemons in a ceramic bowl</title>
+  <desc id="desc">A hand-painted still life of lemons and leafy branches in warm morning light.</desc>
+  <defs>
+    <linearGradient id="wall" x2="0" y2="1"><stop stop-color="#d9dfc9"/><stop offset="1" stop-color="#aab89b"/></linearGradient>
+    <linearGradient id="table" x2="0" y2="1"><stop stop-color="#c88b4a"/><stop offset="1" stop-color="#8c542f"/></linearGradient>
+    <linearGradient id="bowl" x2="0" y2="1"><stop stop-color="#fffdf2"/><stop offset="1" stop-color="#c9d0c1"/></linearGradient>
+    <radialGradient id="lemon"><stop stop-color="#fff5a5"/><stop offset="1" stop-color="#e7b92d"/></radialGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="18"/></filter>
+  </defs>
+  <rect width="960" height="600" fill="url(#wall)"/>
+  <path d="M42 0h252v255H42z" fill="#f5e8c7" opacity=".52"/>
+  <path d="M66 0v255M42 126h252" stroke="#f4edda" stroke-width="13" opacity=".6"/>
+  <ellipse cx="476" cy="470" rx="430" ry="54" fill="#47362b" opacity=".2" filter="url(#soft)"/>
+  <path d="M0 386c206-24 438 18 960-12v226H0z" fill="url(#table)"/>
+  <path d="M0 432c238-18 597 19 960-8M0 516c284-13 568 16 960-7" fill="none" stroke="#e1aa69" stroke-width="5" opacity=".42"/>
+  <path d="M128 358c61-60 155-86 250-54-25 56-69 111-154 125-47 8-79-22-96-71z" fill="#47684d"/>
+  <path d="M176 394c63-38 117-74 169-112M218 370l-22-46m69 20-6-54m-47 89 54 13m-14-55 51 8" fill="none" stroke="#a6b276" stroke-width="7" stroke-linecap="round"/>
+  <ellipse cx="321" cy="381" rx="54" ry="37" transform="rotate(-24 321 381)" fill="url(#lemon)"/>
+  <path d="M316 343q8-13 19-14" fill="none" stroke="#718349" stroke-width="5"/>
+  <ellipse cx="596" cy="367" rx="246" ry="68" fill="#8b8c80" opacity=".34"/>
+  <path d="M353 318c16 105 60 163 236 164 172 1 221-58 238-164-112 46-361 46-474 0z" fill="url(#bowl)" stroke="#899286" stroke-width="5"/>
+  <ellipse cx="590" cy="319" rx="240" ry="70" fill="#f8f6e9" stroke="#9ba091" stroke-width="6"/>
+  <ellipse cx="590" cy="321" rx="220" ry="53" fill="#536441"/>
+  <ellipse cx="487" cy="287" rx="91" ry="56" transform="rotate(-18 487 287)" fill="url(#lemon)"/>
+  <ellipse cx="616" cy="269" rx="92" ry="58" transform="rotate(16 616 269)" fill="url(#lemon)"/>
+  <ellipse cx="689" cy="310" rx="86" ry="53" transform="rotate(-12 689 310)" fill="url(#lemon)"/>
+  <path d="M421 276q10-11 22-12m146-42q11-9 23-7m59 82q8-10 19-11" fill="none" stroke="#83914c" stroke-width="5" stroke-linecap="round"/>
+  <path d="M395 302c-14-9-18-28-7-43 14-18 32-16 43-2-10 22-17 34-36 45zm188-68c-9-20 0-38 18-46 17-7 31 1 34 18-19 17-32 25-52 28zm98 57c-2-19 12-31 29-31 18 0 27 13 23 29-22 9-37 11-52 2z" fill="#526b45"/>
+  <path d="M368 333c107 31 335 35 445 0" fill="none" stroke="#fffdf3" stroke-width="8" opacity=".8"/>
+  <circle cx="526" cy="271" r="12" fill="#fff7c4" opacity=".52"/>
+</svg>

@@ -1,9 +1,10 @@
 import { GoogleGenAI } from '@google/genai';
 import type { Challenge, CriterionEvaluation } from '../shared/types.ts';
+import { clampScore, evaluateSubmissionFallback, roundToTwo } from './scoring.ts';
 
 export interface EvaluationResult {
-  score: number;
-  maxScore: number;
+  promptQualityScore: number;
+  taskAchievementScore: number;
   criterionScores: CriterionEvaluation[];
   feedback: string;
   rationale: string;
@@ -19,29 +20,32 @@ export async function evaluateSubmission(
 ): Promise<EvaluationResult> {
   const apiKey = process.env.GEMINI_API_KEY;
   const wordCount = promptSubmission.trim().split(/\s+/).filter(Boolean).length;
-  const charCount = promptSubmission.length;
+  const compressionWordLimit = challenge.roundId === 'round_2' ? challenge.maxTokensOrChars ?? 50 : 50;
 
   // If Gemini API is available and not a dummy placeholder, attempt AI evaluation
   if (apiKey && apiKey !== 'MY_GEMINI_API_KEY' && apiKey.trim() !== '') {
     try {
       const ai = new GoogleGenAI();
-      const rubricSchema = challenge.rubric.map((r) => `- ${r.criterion} (Max ${r.weight} pts): ${r.description}`).join('\n');
+      const rubricSchema = challenge.rubric.map((r) => `- ${r.criterion} (Max ${r.weight} pts, ${r.category || 'task_achievement'}): ${r.description}`).join('\n');
 
-      const systemPrompt = `You are the Official Lead Judge and Evaluation Engine for the LEXORA Inter-College Prompt Engineering Championship.
-Evaluate the participant's prompt engineering submission with rigorous technical precision.
-Do not invent criteria. Adhere strictly to the official rubric:
+      const systemPrompt = `You are an expert judge for the LEXORA Prompt Engineering Challenge.
+    Evaluate the participant's actual submitted prompt(s), not an assumed ideal answer. Apply the challenge-specific rubric and hidden guide below. Score continuously from 0 to 100; decimals are allowed. Accept semantically equivalent wording. Do not reward irrelevant verbosity or merely non-empty submissions.
+    Prompt quality measures clarity, completeness, specificity, relevance, structure, context use, ambiguity control, and executability. Task achievement measures how fully challenge requirements are satisfied. Score these separately.
+    Do not disclose hidden evaluation criteria or answer keys in participant feedback.
+
+    OFFICIAL RUBRIC:
 ${rubricSchema}
+${challenge.aiEvaluationSystemPrompt ? `\nADDITIONAL EVALUATION RULES:\n${challenge.aiEvaluationSystemPrompt}` : ''}
 
 CHALLENGE DETAILS:
 Title: ${challenge.title}
 Task: ${challenge.detailedTask}
 Target Scenario: ${challenge.targetScenario}
 Constraints: ${challenge.inputConstraints.join('; ')}
-Expected Criteria / Hidden Keys: ${challenge.hiddenExpectedAnswerOrCriteria || 'None'}
+Hidden Criteria: ${challenge.hiddenExpectedAnswerOrCriteria || 'None'}
 
 SUBMISSION DETAILS:
 Word count: ${wordCount}
-Character count: ${charCount}
 Student Prompt Submission:
 """
 ${promptSubmission}
@@ -50,9 +54,10 @@ ${secondaryOutput ? `Secondary Output:\n"""\n${secondaryOutput}\n"""` : ''}
 
 You must return a valid JSON object strictly matching this schema:
 {
-  "score": number, // Total integer score 0 to 100
-  "feedback": "Overall concise feedback summary",
-  "rationale": "Detailed technical rationale referencing rubric criteria and constraints",
+  "promptQualityScore": number, // 0 to 100, decimals allowed
+  "taskAchievementScore": number, // 0 to 100, decimals allowed
+  "feedback": "Constructive participant-safe feedback, without hidden criteria",
+  "rationale": "Concise internal scoring rationale",
   "criterionScores": [
     {
       "criterion": "exact criterion title from rubric",
@@ -75,34 +80,31 @@ You must return a valid JSON object strictly matching this schema:
       const responseText = response.text || '';
       const parsed = JSON.parse(responseText);
 
-      // Validate parsed score
-      let totalScore = Math.min(100, Math.max(0, Math.round(Number(parsed.score) || 75)));
-      const criterionScores: CriterionEvaluation[] = Array.isArray(parsed.criterionScores)
-        ? parsed.criterionScores.map((c: any) => ({
-            criterion: String(c.criterion || 'Criterion'),
-            score: Math.min(Number(c.maxScore) || 25, Math.max(0, Math.round(Number(c.score) || 18))),
-            maxScore: Number(c.maxScore) || 25,
-            comment: String(c.comment || 'Criterion evaluated.'),
-          }))
-        : challenge.rubric.map((r) => ({
-            criterion: r.criterion,
-            score: Math.round(r.weight * 0.8),
-            maxScore: r.weight,
-            comment: 'Standard compliance verified.',
-          }));
+      const criterionScores = sanitizeCriterionScores(challenge, parsed.criterionScores);
+      const fallbackQuality = scoreForCategory(challenge, criterionScores, 'prompt_quality');
+      const fallbackAchievement = scoreForCategory(challenge, criterionScores, 'task_achievement');
+      const hasQualityCriteria = challenge.rubric.some((criterion) => criterion.category === 'prompt_quality');
+      const promptQualityScore = Number.isFinite(Number(parsed.promptQualityScore))
+        ? hasQualityCriteria
+          ? Math.min(clampScore(Number(parsed.promptQualityScore)), fallbackQuality)
+          : clampScore(Number(parsed.promptQualityScore))
+        : fallbackQuality;
+      let taskAchievementScore = Number.isFinite(Number(parsed.taskAchievementScore))
+        ? Math.min(clampScore(Number(parsed.taskAchievementScore)), fallbackAchievement)
+        : fallbackAchievement;
 
-      // If word ceiling is exceeded on Round 2, enforce penalty
-      if (challenge.roundId === 'round_2' && wordCount > 180) {
-        totalScore = Math.max(0, totalScore - 25);
-        parsed.feedback += ` (Notice: Word count limit exceeded: ${wordCount}/180 words; penalty applied).`;
+      if (challenge.roundId === 'round_2' && wordCount > compressionWordLimit) {
+        const limitCriterion = challenge.rubric.find((criterion) => criterion.id === 'r2_c1');
+        const limitedScores = criterionScores.map((item) => item.criterion === limitCriterion?.criterion ? { ...item, score: 0 } : item);
+        taskAchievementScore = Math.min(taskAchievementScore, scoreForCategory(challenge, limitedScores, 'task_achievement'));
       }
 
       return {
-        score: totalScore,
-        maxScore: 100,
+        promptQualityScore: roundToTwo(promptQualityScore),
+        taskAchievementScore: roundToTwo(taskAchievementScore),
         criterionScores,
-        feedback: parsed.feedback || 'Prompt successfully evaluated against championship rubric.',
-        rationale: parsed.rationale || 'Score assigned per rubric criteria breakdown.',
+        feedback: sanitizeFeedback(String(parsed.feedback || 'Your prompt was evaluated against the challenge requirements.'), challenge),
+        rationale: String(parsed.rationale || 'Prompt quality and task achievement were evaluated separately.'),
         evaluatedBy: 'ai_engine',
         aiModelUsed: 'gemini-3.8-flash',
         evaluatedAt: new Date().toISOString(),
@@ -113,109 +115,52 @@ You must return a valid JSON object strictly matching this schema:
   }
 
   // Deterministic rule & rubric-based fallback evaluation engine
-  return evaluateWithRuleEngine(challenge, promptSubmission, wordCount, charCount);
-}
-
-function evaluateWithRuleEngine(
-  challenge: Challenge,
-  promptSubmission: string,
-  wordCount: number,
-  charCount: number
-): EvaluationResult {
-  const lowerPrompt = promptSubmission.toLowerCase();
-  const criteriaScores: CriterionEvaluation[] = [];
-  let totalScore = 0;
-
-  for (const criterion of challenge.rubric) {
-    let scoreRatio = 0.72; // Baseline pass
-    let comment = 'Adequate compliance with core directives.';
-
-    if (challenge.roundId === 'round_1') {
-      // Reverse Prompting
-      const hasYaml = lowerPrompt.includes('yaml') || lowerPrompt.includes('schema');
-      const hasPersona = lowerPrompt.includes('architect') || lowerPrompt.includes('engineer') || lowerPrompt.includes('expert');
-      const hasSLA = lowerPrompt.includes('latency') || lowerPrompt.includes('sla') || lowerPrompt.includes('p99');
-      const hasNegativeConstraint = lowerPrompt.includes('no ') || lowerPrompt.includes('only') || lowerPrompt.includes('do not');
-
-      if (criterion.criterion.includes('Role')) {
-        scoreRatio = hasPersona ? 0.92 : 0.65;
-        comment = hasPersona ? 'Strong architectural persona framing established.' : 'Persona role framing could be more explicit.';
-      } else if (criterion.criterion.includes('Structural')) {
-        scoreRatio = hasYaml ? 0.95 : 0.6;
-        comment = hasYaml ? 'Strict YAML output constraint unambiguously declared.' : 'Missing explicit output format fence instructions.';
-      } else if (criterion.criterion.includes('Constraint')) {
-        scoreRatio = hasSLA && hasNegativeConstraint ? 0.9 : 0.7;
-        comment = hasSLA ? 'Covers latency SLAs, quorum and failover constraints.' : 'Key SLA parameters partially omitted.';
-      } else {
-        scoreRatio = 0.85;
-        comment = 'Good deterministic prompt engineering structure.';
-      }
-    } else if (challenge.roundId === 'round_2') {
-      // Prompt Compression
-      const underLimit = wordCount <= 180;
-      const hasRedact = lowerPrompt.includes('redact') || lowerPrompt.includes('mask') || lowerPrompt.includes('pan');
-      const hasHMAC = lowerPrompt.includes('hmac') || lowerPrompt.includes('signature') || lowerPrompt.includes('400');
-      const has2FA = lowerPrompt.includes('2fa') || lowerPrompt.includes('100,000') || lowerPrompt.includes('100k');
-
-      if (criterion.criterion.includes('Token')) {
-        scoreRatio = underLimit ? (wordCount < 140 ? 0.98 : 0.9) : 0.45;
-        comment = underLimit ? `Compliant with word limit (${wordCount}/180 words).` : `Exceeded 180-word ceiling (${wordCount} words). Penalty applied.`;
-      } else if (criterion.criterion.includes('Constraint')) {
-        const count = (hasRedact ? 1 : 0) + (hasHMAC ? 1 : 0) + (has2FA ? 1 : 0);
-        scoreRatio = count >= 2 ? 0.92 : 0.68;
-        comment = `${count >= 2 ? 'High' : 'Moderate'} retention of mandatory enterprise security gates.`;
-      } else {
-        scoreRatio = 0.86;
-        comment = 'Dense imperative syntax with strong token economy.';
-      }
-    } else if (challenge.roundId === 'round_3') {
-      // Prompt Relay
-      const hasStages = lowerPrompt.includes('stage 1') || lowerPrompt.includes('stage 2') || lowerPrompt.includes('step 1');
-      const hasJson = lowerPrompt.includes('json') || lowerPrompt.includes('schema') || lowerPrompt.includes('payload');
-
-      if (criterion.criterion.includes('Pipeline')) {
-        scoreRatio = hasStages && hasJson ? 0.94 : 0.7;
-        comment = hasStages ? 'Clear multi-stage relay contract established.' : 'Stages could be more modularly separated.';
-      } else {
-        scoreRatio = 0.84;
-        comment = 'Solid context retention and intermediate handoff definition.';
-      }
-    } else {
-      // Round 4: Upskilling - Prompt Chaining
-      const hasRollback = lowerPrompt.includes('rollback') || lowerPrompt.includes('revert') || lowerPrompt.includes('fallback');
-      const hasVerification = lowerPrompt.includes('verify') || lowerPrompt.includes('critique') || lowerPrompt.includes('validate');
-      const hasHumanGate = lowerPrompt.includes('human') || lowerPrompt.includes('approval') || lowerPrompt.includes('gate');
-
-      if (criterion.criterion.includes('Safety') || criterion.criterion.includes('Rollback')) {
-        scoreRatio = hasRollback ? 0.92 : 0.7;
-        comment = hasRollback ? 'Explicit rollback conditions and simulation sandbox defined.' : 'Rollback triggers need tighter criteria.';
-      } else if (criterion.criterion.includes('Verification')) {
-        scoreRatio = hasVerification ? 0.9 : 0.72;
-        comment = hasVerification ? 'Multi-pass self-critique loop embedded.' : 'Self-critique loop could be more rigorous.';
-      } else {
-        scoreRatio = hasHumanGate ? 0.95 : 0.82;
-        comment = 'Comprehensive agentic orchestration and control flow.';
-      }
-    }
-
-    const score = Math.round(criterion.weight * scoreRatio);
-    totalScore += score;
-    criteriaScores.push({
-      criterion: criterion.criterion,
-      score,
-      maxScore: criterion.weight,
-      comment,
-    });
-  }
-
+  const fallback = evaluateSubmissionFallback(challenge, promptSubmission);
   return {
-    score: Math.min(100, Math.max(0, totalScore)),
-    maxScore: 100,
-    criterionScores: criteriaScores,
-    feedback: `Evaluation completed successfully against official rubric criteria (${totalScore}/100).`,
-    rationale: `Submission analyzed for constraint adherence, structural syntax, token economy (${wordCount} words), and technical specification requirements.`,
+    ...fallback,
+    rationale: 'Deterministic challenge-specific evidence coverage with a separate prompt-quality estimate.',
     evaluatedBy: 'rule_engine',
-    aiModelUsed: 'lexora-deterministic-v1',
+    aiModelUsed: 'lexora-coverage-v2',
     evaluatedAt: new Date().toISOString(),
   };
 }
+
+function sanitizeCriterionScores(challenge: Challenge, rawScores: unknown): CriterionEvaluation[] {
+  const returned = Array.isArray(rawScores) ? rawScores : [];
+  return challenge.rubric.map((criterion) => {
+    const match = returned.find((item: any) => String(item?.criterion || '').trim().toLowerCase() === criterion.criterion.trim().toLowerCase());
+    const numericScore = Number(match?.score);
+    const score = Number.isFinite(numericScore) ? Math.min(criterion.weight, Math.max(0, numericScore)) : 0;
+    return {
+      criterion: criterion.criterion,
+      score: roundToTwo(score),
+      maxScore: criterion.weight,
+      comment: String(match?.comment || 'This criterion was not demonstrated clearly.'),
+    };
+  });
+}
+
+function scoreForCategory(
+  challenge: Challenge,
+  scores: CriterionEvaluation[],
+  category: 'prompt_quality' | 'task_achievement'
+): number {
+  const criteria = challenge.rubric.filter((criterion) => criterion.category === category);
+  if (!criteria.length) return 0;
+  const scoreMap = new Map(scores.map((score) => [score.criterion, score]));
+  const totalWeight = criteria.reduce((sum, criterion) => sum + criterion.weight, 0);
+  return totalWeight ? 100 * criteria.reduce((sum, criterion) => {
+    const score = scoreMap.get(criterion.criterion);
+    return sum + (score ? score.score / Math.max(1, score.maxScore) : 0) * criterion.weight;
+  }, 0) / totalWeight : 0;
+}
+
+function sanitizeFeedback(feedback: string, challenge: Challenge): string {
+  const hiddenCriteria = challenge.hiddenExpectedAnswerOrCriteria?.trim();
+  if (hiddenCriteria && feedback.toLowerCase().includes(hiddenCriteria.toLowerCase())) {
+    return 'Your submission has been scored. Review the criterion feedback for areas to strengthen.';
+  }
+  return feedback.slice(0, 1200);
+}
+
+

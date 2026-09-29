@@ -228,7 +228,7 @@ export const StudentDashboard: React.FC = () => {
                         </div>
                         {participant?.highestScore !== null && participant?.highestScore !== undefined && (
                           <div className="text-sm font-bold text-[#A53860]">
-                            Best Score: {participant.highestScore}/{round.maxScore}
+                            Best Score: {participant.highestScore.toFixed(2)}/{round.maxScore}
                           </div>
                         )}
                       </div>
@@ -396,7 +396,7 @@ export const StudentDashboard: React.FC = () => {
                           <span className="text-[10px] text-gray-500">{entry.collegeName}</span>
                         </div>
                       </div>
-                      <span className="font-bold text-[#A53860]">{entry.totalScore} pts</span>
+                      <span className="font-bold text-[#A53860]">{entry.totalScore.toFixed(2)} pts</span>
                     </div>
                   ))}
                 </div>

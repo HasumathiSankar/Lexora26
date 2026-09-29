@@ -84,29 +84,22 @@ export const LandingPage: React.FC = () => {
               >
                 <motion.div whileHover={prefersReducedMotion ? undefined : { y: -2 }} whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}>
                   <Link
-                    to="/register"
+                    to="/admin-login"
                     className="inline-flex items-center justify-center gap-2 rounded-[16px] border border-[#DA627D] bg-[#DA627D] px-5 sm:px-6 py-3 text-[14px] font-semibold text-white shadow-[0_8px_18px_rgba(165,56,96,0.12)] transition-colors duration-200 hover:bg-[#A53860]"
                   >
-                    Register as Student
+                    Admin Login
                     <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
                   </Link>
                 </motion.div>
 
                 <motion.div whileHover={prefersReducedMotion ? undefined : { y: -2 }} whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}>
-                  <a
-                    href="/#rounds"
+                  <Link
+                    to="/register"
                     className="inline-flex items-center justify-center rounded-[16px] border border-[#A53860]/30 bg-white/40 px-5 sm:px-6 py-3 text-[14px] font-semibold text-[#A53860] transition-colors duration-200 hover:border-[#A53860]"
                   >
-                    Explore Four Rounds
-                  </a>
+                    Register as Student
+                  </Link>
                 </motion.div>
-
-                <Link
-                  to="/login"
-                  className="inline-flex items-center justify-center py-3 text-[13px] font-semibold text-[#A53860] transition-colors duration-200 hover:text-[#220914]"
-                >
-                  Already registered? Sign In →
-                </Link>
               </motion.div>
             </div>
           </div>

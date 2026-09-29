@@ -7,6 +7,7 @@ import type {
   Submission,
   ProctoringEvent,
   LeaderboardEntry,
+  CompetitionStatistics,
   Announcement,
   AppNotification,
   AuditLog,
@@ -132,7 +133,7 @@ export const api = {
       isResultsPublished: boolean;
     }>(`/api/rounds/${roundId}/my-status`),
 
-  submitChallenge: (roundId: string, payload: { promptSubmission: string; secondaryOutput?: string }) =>
+  submitChallenge: (roundId: string, payload: { promptSubmission: string; secondaryOutput?: string; idempotencyKey?: string }) =>
     request<{
       success: boolean;
       submission: Submission;
@@ -191,6 +192,7 @@ export const api = {
     request<{
       publishedRounds: Round[];
       topWinners: LeaderboardEntry[];
+      competitionStatistics: CompetitionStatistics;
       collegeStandings: { college: string; totalScore: number; participantsCount: number; gold: number; silver: number; bronze: number }[];
       overallLeaderboard: LeaderboardEntry[];
     }>('/api/results/public'),

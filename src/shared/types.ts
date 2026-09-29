@@ -48,6 +48,26 @@ export interface RubricCriterion {
   criterion: string;
   weight: number; // e.g. 25 points
   description: string;
+  category?: 'prompt_quality' | 'task_achievement';
+}
+
+export interface ScoringWeights {
+  promptQuality: number;
+  taskAchievement: number;
+  timeEfficiency: number;
+  attemptEfficiency: number;
+}
+
+export interface ScoringBreakdown {
+  promptQualityScore: number;
+  taskAchievementScore: number;
+  timeEfficiencyScore: number;
+  attemptEfficiencyScore: number;
+  promptQualityPoints: number;
+  taskAchievementPoints: number;
+  timeEfficiencyPoints: number;
+  attemptEfficiencyPoints: number;
+  completionStatus: 'COMPLETED' | 'PARTIALLY_COMPLETED';
 }
 
 export interface Challenge {
@@ -63,6 +83,7 @@ export interface Challenge {
   rubric: RubricCriterion[];
   sampleInput?: string;
   expectedOutputFormat?: string;
+  referenceImages?: { title: string; src: string; alt: string }[];
   hiddenExpectedAnswerOrCriteria?: string; // Admin-only
   aiEvaluationSystemPrompt?: string; // Admin-only
 }
@@ -87,6 +108,10 @@ export interface Round {
   resultsPublishedAt: string | null;
   strictTabSwitchDisqualification: boolean;
   maxTabSwitchWarnings: number;
+  scoringWeights?: ScoringWeights;
+  completionThreshold?: number;
+  leaderboardEligible?: boolean;
+  scoringConfigUpdatedAt?: string | null;
 }
 
 export type ParticipantRoundStatus =
@@ -112,6 +137,10 @@ export interface RoundParticipant {
   highestScore: number | null;
   finalScore: number | null;
   timeTakenSeconds: number | null;
+  scoringBreakdown?: ScoringBreakdown;
+  completionAt?: string | null;
+  promptQualityScore?: number | null;
+  taskAchievementScore?: number | null;
   isDisqualified: boolean;
   disqualificationReason: string | null;
   disqualifiedAt: string | null;
@@ -158,6 +187,8 @@ export interface Submission {
   evaluatedBy: 'ai_engine' | 'admin' | 'rule_engine';
   evaluatedAt: string | null;
   adminOverrideNotes?: string | null;
+  scoringBreakdown?: ScoringBreakdown;
+  idempotencyKey?: string;
 }
 
 export type ProctoringEventType =
@@ -215,6 +246,15 @@ export interface LeaderboardEntry {
   totalAttempts: number;
   qualificationStatus: 'QUALIFIED' | 'DISQUALIFIED' | 'IN_CONTENTION';
   isTopThree: boolean;
+  taskAchievementScore?: number;
+  promptQualityScore?: number;
+  completionStatus?: 'COMPLETED' | 'PARTIALLY_COMPLETED' | 'NOT_STARTED';
+}
+
+export interface CompetitionStatistics {
+  highestScore: { studentName: string; score: number } | null;
+  fastestCompletion: { studentName: string; seconds: number } | null;
+  fewestAttempts: { studentName: string; attempts: number } | null;
 }
 
 export interface Announcement {

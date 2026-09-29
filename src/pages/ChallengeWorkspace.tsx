@@ -17,7 +17,6 @@ import {
   FileCode,
   FileText,
   HelpCircle,
-  Award,
 } from 'lucide-react';
 
 export const ChallengeWorkspace: React.FC = () => {
@@ -33,7 +32,10 @@ export const ChallengeWorkspace: React.FC = () => {
   // Submission inputs
   const [promptText, setPromptText] = useState('');
   const [secondaryText, setSecondaryText] = useState('');
+  const [tertiaryText, setTertiaryText] = useState('');
+  const [failedReferenceImages, setFailedReferenceImages] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const pendingSubmissionKey = useRef<string | null>(null);
   const [submissionSuccessMsg, setSubmissionSuccessMsg] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -52,7 +54,7 @@ export const ChallengeWorkspace: React.FC = () => {
 
   // Word and character count computation
   const wordCount = promptText.trim().split(/\s+/).filter(Boolean).length;
-  const charCount = promptText.length;
+  const charCount = promptText.length + secondaryText.length + tertiaryText.length;
   const wordLimit = challenge?.maxTokensOrChars;
   const isOverWordLimit = wordLimit && challenge?.roundId === 'round_2' ? wordCount > wordLimit : false;
 
@@ -175,13 +177,13 @@ export const ChallengeWorkspace: React.FC = () => {
     e.preventDefault();
     if (!roundId) return;
 
-    if (!promptText.trim()) {
-      setErrorMessage('Prompt submission cannot be empty.');
+    if (!promptText.trim() || (roundId === 'round_1' && !secondaryText.trim()) || ((roundId === 'round_3' || roundId === 'round_4') && (!secondaryText.trim() || !tertiaryText.trim()))) {
+      setErrorMessage('Complete each prompt field before submitting.');
       return;
     }
 
     if (isOverWordLimit) {
-      if (!confirm(`Your submission has ${wordCount} words, exceeding the 180-word limit. A penalty will be assessed. Proceed anyway?`)) {
+      if (!confirm(`Your submission has ${wordCount} words, exceeding the ${wordLimit}-word limit. A penalty will be assessed. Proceed anyway?`)) {
         return;
       }
     }
@@ -191,10 +193,19 @@ export const ChallengeWorkspace: React.FC = () => {
     setSubmissionSuccessMsg(null);
 
     try {
+      const submissionText = roundId === 'round_1'
+        ? `Question 1: ${promptText.trim()}\n\nQuestion 2: ${secondaryText.trim()}`
+        : roundId === 'round_3'
+          ? `Step 1:\n${promptText.trim()}\n\nStep 2:\n${secondaryText.trim()}\n\nStep 3:\n${tertiaryText.trim()}`
+          : roundId === 'round_4'
+            ? `Stage 1:\n${promptText.trim()}\n\nStage 2:\n${secondaryText.trim()}\n\nStage 3:\n${tertiaryText.trim()}`
+            : promptText.trim();
+      if (!pendingSubmissionKey.current) pendingSubmissionKey.current = crypto.randomUUID();
       const res = await api.submitChallenge(roundId, {
-        promptSubmission: promptText,
-        secondaryOutput: secondaryText ? secondaryText : undefined,
+        promptSubmission: submissionText,
+        idempotencyKey: pendingSubmissionKey.current,
       });
+      pendingSubmissionKey.current = null;
 
       setParticipant(res.participant);
       setSubmissions((prev) => [res.submission, ...prev]);
@@ -204,6 +215,7 @@ export const ChallengeWorkspace: React.FC = () => {
       if (res.participant.remainingAttempts > 0) {
         setPromptText('');
         setSecondaryText('');
+        setTertiaryText('');
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Submission failed. Please try again.');
@@ -221,6 +233,11 @@ export const ChallengeWorkspace: React.FC = () => {
   const attemptsUsed = participant?.attemptsCount || 0;
   const attemptsRemaining = participant ? Math.max(0, (round?.maxAttempts || 2) - attemptsUsed) : 2;
   const isSubmissionClosed = attemptsRemaining === 0 || isTimeExpired || isDisqualified;
+  const isFormComplete = roundId === 'round_1'
+    ? !!promptText.trim() && !!secondaryText.trim()
+    : roundId === 'round_3' || roundId === 'round_4'
+      ? !!promptText.trim() && !!secondaryText.trim() && !!tertiaryText.trim()
+      : !!promptText.trim();
 
   if (isLoading) {
     return (
@@ -370,15 +387,47 @@ export const ChallengeWorkspace: React.FC = () => {
                 </p>
               </div>
 
+              {challenge?.roundId === 'round_1' && challenge.referenceImages?.length ? (
+                <div className="grid grid-cols-1 gap-4">
+                  {challenge.referenceImages.map((image) => (
+                    <figure key={image.title} className="overflow-hidden rounded-xl border border-[#F9DBBD] bg-[#FCF8F5]">
+                      <figcaption className="px-4 py-3 text-sm font-semibold text-[#A53860]">{image.title}</figcaption>
+                      {failedReferenceImages.includes(image.src) ? (
+                        <div className="flex min-h-56 items-center justify-center border-t border-[#F9DBBD] bg-white px-6 text-center text-sm text-gray-500">
+                          Reference image unavailable. Please tell your administrator.
+                        </div>
+                      ) : (
+                        <img
+                          src={image.src}
+                          alt={image.alt}
+                          onError={() => setFailedReferenceImages((images) => [...images, image.src])}
+                          className="block max-h-[440px] w-full bg-white object-contain"
+                        />
+                      )}
+                    </figure>
+                  ))}
+                </div>
+              ) : null}
+
               {/* Target Scenario / Benchmark Output */}
               {challenge?.targetScenario && (
                 <div className="space-y-1.5">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-gray-700 block">
-                    Target Scenario / Benchmark Data:
+                    {challenge.roundId === 'round_2' ? 'Passage:' : challenge.roundId === 'round_4' ? 'Event Details:' : 'Target Scenario / Benchmark Data:'}
                   </span>
-                  <pre className="p-4 rounded-xl bg-[#220914] text-[#F9DBBD] text-xs font-mono overflow-x-auto whitespace-pre-wrap leading-relaxed">
-                    {challenge.targetScenario}
-                  </pre>
+                  {challenge.roundId === 'round_2' ? (
+                    <div className="rounded-xl border border-[#F9DBBD] bg-[#FCF8F5] p-5 text-sm leading-7 text-[#220914]">
+                      {challenge.targetScenario}
+                    </div>
+                  ) : challenge.roundId === 'round_4' ? (
+                    <div className="rounded-xl border border-[#F9DBBD] bg-[#FCF8F5] p-4 text-sm leading-7 text-[#220914] whitespace-pre-line">
+                      {challenge.targetScenario}
+                    </div>
+                  ) : (
+                    <pre className="p-4 rounded-xl bg-[#220914] text-[#F9DBBD] text-xs font-mono overflow-x-auto whitespace-pre-wrap leading-relaxed">
+                      {challenge.targetScenario}
+                    </pre>
+                  )}
                 </div>
               )}
 
@@ -400,32 +449,6 @@ export const ChallengeWorkspace: React.FC = () => {
               )}
             </div>
 
-            {/* Official Scoring Rubric */}
-            <div className="p-6 rounded-2xl bg-white border-2 border-[#FFA5AB] shadow-sm space-y-4">
-              <div className="flex items-center justify-between border-b border-[#FFA5AB]/40 pb-3">
-                <div className="flex items-center gap-2">
-                  <Award className="w-5 h-5 text-[#DA627D]" />
-                  <h4 className="font-serif text-base font-bold text-[#220914]">
-                    Evaluation Rubric Breakdown
-                  </h4>
-                </div>
-                <span className="text-[11px] font-semibold text-[#A53860]">
-                  Automated AI Scoring
-                </span>
-              </div>
-
-              <div className="space-y-3">
-                {challenge?.rubric.map((item) => (
-                  <div key={item.id} className="p-3 rounded-xl bg-[#FCF8F5] border border-[#FFA5AB]/40 text-xs space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-[#A53860]">{item.criterion}</span>
-                      <span className="font-mono font-bold text-[#DA627D]">{item.weight} pts</span>
-                    </div>
-                    <p className="text-[#220914]/80 leading-relaxed text-[11px]">{item.description}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
 
           {/* RIGHT 6 COLUMNS: PROMPT EDITOR & SUBMISSION MONITOR */}
@@ -434,8 +457,8 @@ export const ChallengeWorkspace: React.FC = () => {
             <div className="p-6 rounded-2xl bg-white border-2 border-[#DA627D] shadow-md space-y-5">
               <div className="flex items-center justify-between border-b border-[#F9DBBD] pb-3">
                 <div>
-                  <h3 className="font-serif text-lg font-bold text-[#220914]">
-                    Prompt Submission Editor
+                    <h3 className="font-serif text-lg font-bold text-[#220914]">
+                    {roundId === 'round_1' ? 'Image Prompt Responses' : roundId === 'round_3' ? 'Three-Step Prompt Relay' : roundId === 'round_4' ? 'Three-Stage Prompt Chain' : 'Compressed Prompt'}
                   </h3>
                   <p className="text-xs text-gray-500">
                     {attemptsRemaining > 0
@@ -470,37 +493,37 @@ export const ChallengeWorkspace: React.FC = () => {
               )}
 
               <form onSubmit={handleSubmitAttempt} className="space-y-4">
-                <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-700 mb-1.5 flex items-center justify-between">
-                    <span>Engineered Prompt Directives *</span>
-                    <span className="text-[10px] text-gray-400 normal-case">
-                      Plaintext prompt or system instructions
-                    </span>
-                  </label>
-                  <textarea
-                    rows={12}
-                    disabled={isSubmissionClosed || isSubmitting}
-                    value={promptText}
-                    onChange={(e) => setPromptText(e.target.value)}
-                    placeholder="Enter your precision prompt here. Include role persona, negative constraints, output formatting rules, and execution directives..."
-                    className="w-full p-4 rounded-xl border border-gray-300 font-mono text-xs focus:outline-none focus:border-[#DA627D] focus:ring-2 focus:ring-[#DA627D]/30 disabled:bg-gray-100 disabled:cursor-not-allowed leading-relaxed"
-                  />
-                </div>
-
-                {/* Optional secondary output if multi-step or prompt relay */}
-                {challenge?.promptType === 'multi_step_workflow' && (
-                  <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-700 mb-1.5 flex items-center justify-between">
-                      <span>Intermediate JSON Handoff / Schema Bridge (Optional)</span>
-                    </label>
-                    <textarea
-                      rows={4}
-                      disabled={isSubmissionClosed || isSubmitting}
-                      value={secondaryText}
-                      onChange={(e) => setSecondaryText(e.target.value)}
-                      placeholder='Optional: e.g. {"stage1_to_stage2_schema": ...}'
-                      className="w-full p-3 rounded-xl border border-gray-300 font-mono text-xs focus:outline-none focus:border-[#DA627D] disabled:bg-gray-100"
-                    />
+                {roundId === 'round_1' ? (
+                  <>
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-gray-700">Recreate the Reference Image — Question 1 *</label>
+                      <textarea rows={5} required disabled={isSubmissionClosed || isSubmitting} value={promptText} onChange={(e) => { pendingSubmissionKey.current = null; setPromptText(e.target.value); }} placeholder="Describe the image in a prompt..." className="w-full rounded-xl border border-gray-300 p-4 text-sm leading-relaxed focus:border-[#DA627D] focus:outline-none disabled:bg-gray-100" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-gray-700">Recreate the Reference Image — Question 2 *</label>
+                      <textarea rows={5} required disabled={isSubmissionClosed || isSubmitting} value={secondaryText} onChange={(e) => { pendingSubmissionKey.current = null; setSecondaryText(e.target.value); }} placeholder="Describe the image in a prompt..." className="w-full rounded-xl border border-gray-300 p-4 text-sm leading-relaxed focus:border-[#DA627D] focus:outline-none disabled:bg-gray-100" />
+                    </div>
+                  </>
+                ) : roundId === 'round_3' || roundId === 'round_4' ? (
+                  <>
+                    <div className="rounded-lg bg-[#FCF8F5] px-4 py-3 text-center text-sm font-semibold text-[#A53860]">
+                      {roundId === 'round_3' ? 'Step 1 → Step 2 → Step 3' : 'Stage 1 → Stage 2 → Stage 3'}
+                    </div>
+                    {[
+                      { number: 1, heading: roundId === 'round_3' ? 'Step 1 — Collect Information' : 'Stage 1 — Draft', value: promptText, update: setPromptText, placeholder: 'Write the first prompt...' },
+                      { number: 2, heading: roundId === 'round_3' ? 'Step 2 — Create a Study Plan' : 'Stage 2 — Review', value: secondaryText, update: setSecondaryText, placeholder: 'Write the prompt that uses the previous output...' },
+                      { number: 3, heading: roundId === 'round_3' ? 'Step 3 — Generate Revision Tips' : 'Stage 3 — Improve', value: tertiaryText, update: setTertiaryText, placeholder: 'Write the prompt that uses the previous output...' },
+                    ].map((field) => (
+                      <div key={field.number} className="space-y-1.5">
+                        <label className="block text-xs font-semibold text-gray-700">{field.heading} *</label>
+                        <textarea rows={4} required disabled={isSubmissionClosed || isSubmitting} value={field.value} onChange={(e) => { pendingSubmissionKey.current = null; field.update(e.target.value); }} placeholder={field.placeholder} className="w-full rounded-xl border border-gray-300 p-4 text-sm leading-relaxed focus:border-[#DA627D] focus:outline-none disabled:bg-gray-100" />
+                      </div>
+                    ))}
+                  </>
+                ) : (
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-gray-700">Your shorter prompt (50 words maximum) *</label>
+                    <textarea rows={8} required disabled={isSubmissionClosed || isSubmitting} value={promptText} onChange={(e) => { pendingSubmissionKey.current = null; setPromptText(e.target.value); }} placeholder="Write a clear, shorter prompt that keeps all the important requirements..." className="w-full rounded-xl border border-gray-300 p-4 text-sm leading-relaxed focus:border-[#DA627D] focus:outline-none disabled:bg-gray-100" />
                   </div>
                 )}
 
@@ -516,7 +539,7 @@ export const ChallengeWorkspace: React.FC = () => {
 
                   <button
                     type="submit"
-                    disabled={isSubmissionClosed || isSubmitting || !promptText.trim()}
+                    disabled={isSubmissionClosed || isSubmitting || !isFormComplete}
                     className="w-full sm:w-auto px-7 py-3 rounded-xl text-xs font-bold uppercase tracking-wider bg-[#DA627D] hover:bg-[#A53860] text-white shadow transition-all hover:shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Send className="w-3.5 h-3.5" />
@@ -538,7 +561,7 @@ export const ChallengeWorkspace: React.FC = () => {
                     Recorded Submissions & Evaluations
                   </h4>
                   <span className="text-xs text-[#A53860] font-semibold">
-                    Best Score: {participant?.highestScore || 0}/100
+                    Best Score: {(participant?.highestScore || 0).toFixed(2)}/100
                   </span>
                 </div>
 
@@ -559,39 +582,29 @@ export const ChallengeWorkspace: React.FC = () => {
                         </div>
                         <div className="text-right">
                           <span className="text-xl font-serif font-bold text-[#DA627D]">
-                            {sub.score !== null ? sub.score : '—'}
+                            {sub.score !== null ? sub.score.toFixed(2) : '—'}
                           </span>
                           <span className="text-xs text-gray-500">/100</span>
                         </div>
                       </div>
+
+                      {sub.scoringBreakdown && (
+                        <div className="grid grid-cols-2 gap-2 rounded-xl border border-[#F9DBBD] bg-white p-3 text-xs sm:grid-cols-4">
+                          <div><span className="block text-[10px] uppercase text-gray-500">Prompt quality</span><strong>{sub.scoringBreakdown.promptQualityPoints.toFixed(2)} pts</strong></div>
+                          <div><span className="block text-[10px] uppercase text-gray-500">Task achievement</span><strong>{sub.scoringBreakdown.taskAchievementPoints.toFixed(2)} pts</strong></div>
+                          <div><span className="block text-[10px] uppercase text-gray-500">Time efficiency</span><strong>{sub.scoringBreakdown.timeEfficiencyPoints.toFixed(2)} pts</strong></div>
+                          <div><span className="block text-[10px] uppercase text-gray-500">Attempt efficiency</span><strong>{sub.scoringBreakdown.attemptEfficiencyPoints.toFixed(2)} pts</strong></div>
+                          <p className="col-span-2 pt-1 font-semibold text-[#A53860] sm:col-span-4">
+                            {sub.scoringBreakdown.completionStatus === 'COMPLETED' ? 'Completed' : 'Partially completed'}
+                          </p>
+                        </div>
+                      )}
 
                       {/* Feedback */}
                       {sub.feedback && (
                         <div className="p-3 rounded-xl bg-white border border-[#FFA5AB]/50 text-xs text-[#220914] space-y-1">
                           <span className="font-bold text-[#A53860] block">Judge Assessment:</span>
                           <p className="leading-relaxed">{sub.feedback}</p>
-                        </div>
-                      )}
-
-                      {/* Criterion Scores */}
-                      {sub.criterionScores && sub.criterionScores.length > 0 && (
-                        <div className="space-y-1.5 pt-1">
-                          <span className="text-[11px] font-bold text-gray-700 uppercase tracking-wider block">
-                            Rubric Criterion Scoring:
-                          </span>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                            {sub.criterionScores.map((c, i) => (
-                              <div key={i} className="p-2 rounded-lg bg-white border border-gray-200">
-                                <div className="flex justify-between font-medium">
-                                  <span className="truncate text-gray-800">{c.criterion}</span>
-                                  <span className="font-bold text-[#A53860] shrink-0">
-                                    {c.score}/{c.maxScore}
-                                  </span>
-                                </div>
-                                <p className="text-[10px] text-gray-500 truncate mt-0.5">{c.comment}</p>
-                              </div>
-                            ))}
-                          </div>
                         </div>
                       )}
 

@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api.ts';
-import type { LeaderboardEntry, Round } from '../shared/types.ts';
+import type { CompetitionStatistics, LeaderboardEntry, Round } from '../shared/types.ts';
 import { Trophy, Medal, Award, Crown, Search, Lock, Sparkles, Building, Timer } from 'lucide-react';
 
 export const PublicLeaderboardPage: React.FC = () => {
   const [selectedRoundFilter, setSelectedRoundFilter] = useState<string>('overall');
   const [rounds, setRounds] = useState<Round[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [competitionStatistics, setCompetitionStatistics] = useState<CompetitionStatistics | null>(null);
   const [isPublished, setIsPublished] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -15,13 +16,15 @@ export const PublicLeaderboardPage: React.FC = () => {
     async function loadData() {
       try {
         setIsLoading(true);
-        const [roundsData, lbData] = await Promise.all([
+        const [roundsData, lbData, resultsData] = await Promise.all([
           api.getRounds(),
           api.getLeaderboard(selectedRoundFilter === 'overall' ? undefined : selectedRoundFilter),
+          api.getPublicResults(),
         ]);
         setRounds(roundsData);
         setIsPublished(lbData.published);
         setLeaderboard(lbData.entries || []);
+        setCompetitionStatistics(resultsData.competitionStatistics);
       } catch (err) {
         console.error('Failed to load leaderboard:', err);
       } finally {
@@ -125,7 +128,7 @@ export const PublicLeaderboardPage: React.FC = () => {
                     </div>
                     <div className="mt-6 pt-4 border-t border-gray-100">
                       <span className="font-serif text-2xl font-bold text-[#A53860]">
-                        {top3[1].totalScore} pts
+                        {top3[1].totalScore.toFixed(2)} pts
                       </span>
                       <span className="text-[10px] text-gray-400 block mt-0.5">
                         {top3[1].totalTimeSeconds}s elapsed · {top3[1].totalAttempts} attempts
@@ -155,7 +158,7 @@ export const PublicLeaderboardPage: React.FC = () => {
                     </div>
                     <div className="mt-6 pt-4 border-t border-amber-100">
                       <span className="font-serif text-3xl font-bold text-[#A53860]">
-                        {top3[0].totalScore} pts
+                        {top3[0].totalScore.toFixed(2)} pts
                       </span>
                       <span className="text-[10px] text-gray-400 block mt-0.5">
                         {top3[0].totalTimeSeconds}s elapsed · {top3[0].totalAttempts} attempts
@@ -185,7 +188,7 @@ export const PublicLeaderboardPage: React.FC = () => {
                     </div>
                     <div className="mt-6 pt-4 border-t border-gray-100">
                       <span className="font-serif text-2xl font-bold text-[#A53860]">
-                        {top3[2].totalScore} pts
+                        {top3[2].totalScore.toFixed(2)} pts
                       </span>
                       <span className="text-[10px] text-gray-400 block mt-0.5">
                         {top3[2].totalTimeSeconds}s elapsed · {top3[2].totalAttempts} attempts
@@ -195,6 +198,24 @@ export const PublicLeaderboardPage: React.FC = () => {
                 )}
               </div>
             )}
+
+            <section aria-label="Competition statistics" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="border border-[#E8D7C8] bg-white p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Highest score</p>
+                <p className="mt-2 font-serif text-lg font-bold text-[#A53860]">{competitionStatistics?.highestScore?.score.toFixed(2) ?? '—'}</p>
+                <p className="text-xs text-gray-600">{competitionStatistics?.highestScore?.studentName || 'No results yet'}</p>
+              </div>
+              <div className="border border-[#E8D7C8] bg-white p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Fastest completion</p>
+                <p className="mt-2 font-serif text-lg font-bold text-[#A53860]">{competitionStatistics?.fastestCompletion ? `${competitionStatistics.fastestCompletion.seconds}s` : '—'}</p>
+                <p className="text-xs text-gray-600">{competitionStatistics?.fastestCompletion?.studentName || 'No completed entries yet'}</p>
+              </div>
+              <div className="border border-[#E8D7C8] bg-white p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Fewest attempts</p>
+                <p className="mt-2 font-serif text-lg font-bold text-[#A53860]">{competitionStatistics?.fewestAttempts?.attempts ?? '—'}</p>
+                <p className="text-xs text-gray-600">{competitionStatistics?.fewestAttempts?.studentName || 'No submitted entries yet'}</p>
+              </div>
+            </section>
 
             {/* FULL TABLE OF STANDINGS */}
             <div className="rounded-3xl bg-white border-2 border-[#F9DBBD] shadow-xl p-8 space-y-6">
@@ -230,7 +251,12 @@ export const PublicLeaderboardPage: React.FC = () => {
                       <th className="p-3">Rounds Completed</th>
                       <th className="p-3">Attempts Used</th>
                       <th className="p-3">Time Taken</th>
+                      <th className="p-3">Round 1</th>
+                      <th className="p-3">Round 2</th>
+                      <th className="p-3">Round 3</th>
+                      <th className="p-3">Round 4</th>
                       <th className="p-3">Official Score</th>
+                      <th className="p-3">Completion</th>
                       <th className="p-3">Status</th>
                     </tr>
                   </thead>
@@ -256,9 +282,14 @@ export const PublicLeaderboardPage: React.FC = () => {
                         <td className="p-3">{e.roundsCompleted}/4</td>
                         <td className="p-3">{e.totalAttempts}</td>
                         <td className="p-3 text-gray-500">{e.totalTimeSeconds}s</td>
+                        <td className="p-3">{e.round1Score?.toFixed(2) ?? '—'}</td>
+                        <td className="p-3">{e.round2Score?.toFixed(2) ?? '—'}</td>
+                        <td className="p-3">{e.round3Score?.toFixed(2) ?? '—'}</td>
+                        <td className="p-3">{e.round4Score?.toFixed(2) ?? '—'}</td>
                         <td className="p-3 font-serif font-bold text-base text-[#DA627D]">
-                          {e.totalScore} pts
+                          {e.totalScore.toFixed(2)} pts
                         </td>
+                        <td className="p-3">{(e.completionStatus || 'NOT_STARTED').replaceAll('_', ' ')}</td>
                         <td className="p-3">
                           <span
                             className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
@@ -274,7 +305,7 @@ export const PublicLeaderboardPage: React.FC = () => {
                     ))}
                     {filteredEntries.length === 0 && (
                       <tr>
-                        <td colSpan={8} className="p-8 text-center text-gray-400">
+                        <td colSpan={13} className="p-8 text-center text-gray-400">
                           No candidates found matching query.
                         </td>
                       </tr>

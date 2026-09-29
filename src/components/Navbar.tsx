@@ -13,6 +13,7 @@ import {
   Compass,
   FileCode2,
   Lock,
+  Layers,
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
@@ -66,15 +67,10 @@ export const Navbar: React.FC = () => {
             <span className={`absolute left-0 -bottom-[6px] h-[2px] w-full rounded bg-[#DA627D] origin-left transition-transform duration-200 ${isActive('/') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`} />
           </Link>
 
-          <a href="/#rounds" className="group relative inline-flex items-center text-[14px] font-medium text-[#220914]/80 transition-colors duration-200 hover:text-[#A53860]">
+          <Link to="/rounds" className={navLinkClass('/rounds')}>
             <span>Four Rounds</span>
-            <span className="absolute left-0 -bottom-[6px] h-[2px] w-full rounded bg-[#DA627D] origin-left scale-x-0 transition-transform duration-200 group-hover:scale-x-100" />
-          </a>
-
-          <a href="/#schedule" className="group relative inline-flex items-center text-[14px] font-medium text-[#220914]/80 transition-colors duration-200 hover:text-[#A53860]">
-            <span>Schedule</span>
-            <span className="absolute left-0 -bottom-[6px] h-[2px] w-full rounded bg-[#DA627D] origin-left scale-x-0 transition-transform duration-200 group-hover:scale-x-100" />
-          </a>
+            <span className={`absolute left-0 -bottom-[6px] h-[2px] w-full rounded bg-[#DA627D] origin-left transition-transform duration-200 ${isActive('/rounds') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`} />
+          </Link>
 
           <Link to="/leaderboard" className={navLinkClass('/leaderboard')}>
             <Trophy className="w-[16px] h-[16px] text-[#DA627D]" />
@@ -100,6 +96,9 @@ export const Navbar: React.FC = () => {
         </nav>
 
         <div className="flex items-center gap-3">
+          <Link to="/rounds" aria-label="Four rounds" title="Four rounds" className="rounded-lg p-2 text-[#A53860] hover:bg-[#F9DBBD]/40 lg:hidden">
+            <Layers className="h-5 w-5" />
+          </Link>
           {isAuthenticated ? (
             <>
               <div className="relative">
