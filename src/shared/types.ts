@@ -187,6 +187,7 @@ export interface Submission {
   evaluatedBy: 'ai_engine' | 'admin' | 'rule_engine';
   evaluatedAt: string | null;
   adminOverrideNotes?: string | null;
+  originalScore?: number | null;
   scoringBreakdown?: ScoringBreakdown;
   idempotencyKey?: string;
 }

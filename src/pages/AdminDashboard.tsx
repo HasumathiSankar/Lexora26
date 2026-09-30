@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext.tsx';
 import { api } from '../lib/api.ts';
+import { filterSubmissionsByIstDate, type SubmissionDateFilter } from '../lib/istDateFilter.ts';
 import type {
   Round,
   Challenge,
@@ -73,6 +74,8 @@ export const AdminDashboard: React.FC = () => {
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [overrideScoreInput, setOverrideScoreInput] = useState<string>('');
   const [overrideNotesInput, setOverrideNotesInput] = useState<string>('');
+  const [submissionDateFilter, setSubmissionDateFilter] = useState<SubmissionDateFilter>('today');
+  const [selectedSubmissionDate, setSelectedSubmissionDate] = useState('');
 
   // Search & filters
   const [submissionSearch, setSubmissionSearch] = useState('');
@@ -190,21 +193,31 @@ export const AdminDashboard: React.FC = () => {
   const handleScoreOverride = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedSubmission) return;
+    const reason = overrideNotesInput.trim();
+    if (!reason) {
+      setErrorMessage('A reason is required to edit a result.');
+      return;
+    }
     try {
       const score = Number(overrideScoreInput);
-      if (isNaN(score) || score < 0 || score > selectedSubmission.maxScore) {
-        alert(`Score must be between 0 and ${selectedSubmission.maxScore}`);
+      if (!Number.isFinite(score) || score < 0 || score > selectedSubmission.maxScore) {
+        setErrorMessage(`Score must be between 0 and ${selectedSubmission.maxScore}.`);
         return;
       }
+      const confirmed = window.confirm(
+        `Confirm result correction for ${selectedSubmission.studentName} (${selectedSubmission.studentId})?\n\n${selectedSubmission.roundTitle}: ${selectedSubmission.score?.toFixed(2) ?? '—'} → ${score.toFixed(2)}\nReason: ${reason}`
+      );
+      if (!confirmed) return;
+      setErrorMessage(null);
       await api.overrideScore(selectedSubmission.id, {
         score,
-        adminNotes: overrideNotesInput,
+        adminNotes: reason,
       });
-      setActionMessage(`Score updated to ${score} for ${selectedSubmission.studentName}.`);
+      setActionMessage(`Score updated to ${score.toFixed(2)} for ${selectedSubmission.studentName}.`);
       setSelectedSubmission(null);
       await fetchAllAdminData();
     } catch (err: any) {
-      alert(err.message || 'Failed to override score');
+      setErrorMessage(err.message || 'Failed to edit result.');
     }
   };
 
@@ -240,7 +253,12 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // Filtered submissions
-  const filteredSubmissions = submissions.filter((s) => {
+  const dateFilteredSubmissions = filterSubmissionsByIstDate(
+    submissions,
+    submissionDateFilter,
+    selectedSubmissionDate
+  );
+  const filteredSubmissions = dateFilteredSubmissions.filter((s) => {
     const matchesRound = !submissionRoundFilter || s.roundId === submissionRoundFilter;
     const matchesSearch =
       !submissionSearch ||
@@ -848,6 +866,26 @@ export const AdminDashboard: React.FC = () => {
                       <option key={r.id} value={r.id}>Round 0{r.roundNumber}</option>
                     ))}
                   </select>
+
+                  <select
+                    aria-label="Submission test date filter"
+                    value={submissionDateFilter}
+                    onChange={(e) => setSubmissionDateFilter(e.target.value as SubmissionDateFilter)}
+                    className="p-1.5 text-xs rounded-xl border border-gray-300 bg-white"
+                  >
+                    <option value="today">Today (IST)</option>
+                    <option value="all">All Dates</option>
+                    <option value="selected">Select Date</option>
+                  </select>
+                  {submissionDateFilter === 'selected' && (
+                    <input
+                      type="date"
+                      aria-label="Select submission date"
+                      value={selectedSubmissionDate}
+                      onChange={(e) => setSelectedSubmissionDate(e.target.value)}
+                      className="p-1.5 text-xs rounded-xl border border-gray-300 bg-white"
+                    />
+                  )}
                 </div>
               </div>
 
@@ -892,12 +930,13 @@ export const AdminDashboard: React.FC = () => {
                           <button
                             onClick={() => {
                               setSelectedSubmission(sub);
-                              setOverrideScoreInput(String(sub.score || ''));
+                              setOverrideScoreInput(String(sub.score ?? ''));
                               setOverrideNotesInput(sub.adminOverrideNotes || '');
+                              setErrorMessage(null);
                             }}
                             className="px-3 py-1 rounded-lg text-[11px] font-bold bg-[#DA627D] hover:bg-[#A53860] text-white transition-colors"
                           >
-                            Inspect & Grade
+                            Edit Results
                           </button>
                         </td>
                       </tr>
@@ -905,7 +944,11 @@ export const AdminDashboard: React.FC = () => {
                     {filteredSubmissions.length === 0 && (
                       <tr>
                         <td colSpan={8} className="p-8 text-center text-gray-400">
-                          No submissions matching current criteria.
+                          {submissionDateFilter === 'selected' && !selectedSubmissionDate
+                            ? 'Select a test date to view matching submissions.'
+                            : submissionDateFilter === 'today'
+                              ? 'No submissions were recorded today (IST).'
+                              : 'No submissions match the selected filters.'}
                         </td>
                       </tr>
                     )}
@@ -924,7 +967,7 @@ export const AdminDashboard: React.FC = () => {
                         Submission Detail: {selectedSubmission.studentName}
                       </h4>
                       <p className="text-xs text-gray-500">
-                        {selectedSubmission.collegeName} · {selectedSubmission.roundTitle} (Attempt {selectedSubmission.attemptNumber})
+                        Participant ID: {selectedSubmission.studentId} · {selectedSubmission.collegeName} · {selectedSubmission.roundTitle} (Attempt {selectedSubmission.attemptNumber})
                       </p>
                     </div>
                     <button
@@ -953,23 +996,33 @@ export const AdminDashboard: React.FC = () => {
 
                   {/* Manual Score Override Form */}
                   <form onSubmit={handleScoreOverride} className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-3">
-                    <span className="font-bold text-xs text-[#220914] block">Administrator Grade Override</span>
+                    <span className="font-bold text-xs text-[#220914] block">Edit Results</span>
+                    <div className="grid grid-cols-1 gap-2 rounded-lg border border-[#F9DBBD] bg-white p-3 text-xs sm:grid-cols-3">
+                      <div><span className="block text-[10px] font-bold uppercase text-gray-500">Participant</span>{selectedSubmission.studentName}</div>
+                      <div><span className="block text-[10px] font-bold uppercase text-gray-500">Identifier</span>{selectedSubmission.studentId}</div>
+                      <div><span className="block text-[10px] font-bold uppercase text-gray-500">Round / attempt</span>{selectedSubmission.roundTitle} · {selectedSubmission.attemptNumber}</div>
+                      <div><span className="block text-[10px] font-bold uppercase text-gray-500">Original score</span>{(selectedSubmission.originalScore ?? selectedSubmission.score)?.toFixed(2) ?? '—'}</div>
+                    </div>
                     <div className="grid grid-cols-2 gap-3 text-xs">
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-600 uppercase">Score (Max 100)</label>
+                        <label className="block text-[10px] font-bold text-gray-600 uppercase">New score (0–{selectedSubmission.maxScore})</label>
                         <input
                           type="number"
                           min={0}
-                          max={100}
+                          max={selectedSubmission.maxScore}
+                          step="0.01"
+                          required
                           value={overrideScoreInput}
                           onChange={(e) => setOverrideScoreInput(e.target.value)}
                           className="w-full p-2 rounded-lg border border-gray-300 font-bold text-[#DA627D]"
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-600 uppercase">Audit Justification</label>
-                        <input
-                          type="text"
+                        <label className="block text-[10px] font-bold text-gray-600 uppercase">Reason (required)</label>
+                        <textarea
+                          required
+                          rows={2}
+                          maxLength={2000}
                           value={overrideNotesInput}
                           onChange={(e) => setOverrideNotesInput(e.target.value)}
                           placeholder="Reason for manual adjustment"
@@ -977,6 +1030,10 @@ export const AdminDashboard: React.FC = () => {
                         />
                       </div>
                     </div>
+                    <p className="rounded-lg bg-white p-3 text-xs text-gray-700">
+                      Review current result: {selectedSubmission.score?.toFixed(2) ?? '—'} → {Number(overrideScoreInput || 0).toFixed(2)} points
+                    </p>
+                    {errorMessage && <p role="alert" className="text-xs font-medium text-red-700">{errorMessage}</p>}
                     <div className="flex justify-end gap-2 pt-2">
                       <button
                         type="button"

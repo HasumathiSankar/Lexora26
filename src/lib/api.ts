@@ -176,7 +176,7 @@ export const api = {
     return request<Submission[]>(`/api/admin/submissions?${query.toString()}`);
   },
 
-  overrideScore: (id: string, payload: { score: number; adminNotes?: string }) =>
+  overrideScore: (id: string, payload: { score: number; adminNotes: string }) =>
     request<{ success: boolean; submission: Submission }>(`/api/admin/submissions/${id}/override`, {
       method: 'PUT',
       body: JSON.stringify(payload),

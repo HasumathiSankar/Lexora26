@@ -7,6 +7,7 @@ import jwt from 'jsonwebtoken';
 import { db, hashPassword, verifyPassword } from './src/server/db.ts';
 import { evaluateSubmission } from './src/server/ai.ts';
 import { areScoringWeightsValid, calculateCompetitionScore, createInFlightSubmissionLock, DEFAULT_SCORING_WEIGHTS, roundToTwo } from './src/server/scoring.ts';
+import { canEditResults, highestSubmissionScore, resultEditAuditDetails, validateResultEdit } from './src/server/resultEdits.ts';
 import type { User, StudentProfile, RoundParticipant, Submission } from './src/shared/types.ts';
 
 dotenv.config();
@@ -27,7 +28,13 @@ function generateToken(userId: string): string {
 }
 
 function sanitizeStudentSubmission(submission: Submission): Submission {
-  return { ...submission, criterionScores: [], idempotencyKey: undefined };
+  return {
+    ...submission,
+    criterionScores: [],
+    idempotencyKey: undefined,
+    originalScore: undefined,
+    adminOverrideNotes: undefined,
+  };
 }
 
 // Authentication middleware
@@ -62,7 +69,7 @@ function authenticate(req: AuthenticatedRequest, res: Response, next: NextFuncti
 }
 
 function requireAdmin(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
-  if (!req.user || req.user.role !== 'admin') {
+  if (!canEditResults(req.user?.role)) {
     res.status(403).json({ error: 'Administrator privilege required' });
     return;
   }
@@ -1037,33 +1044,48 @@ app.put('/api/admin/submissions/:id/override', authenticate, requireAdmin, (req:
   }
 
   const { score, adminNotes } = req.body;
+  const validatedEdit = validateResultEdit(score, submission.maxScore, adminNotes);
+  if (!validatedEdit) {
+    res.status(400).json({ error: `Provide a score between 0 and ${submission.maxScore} and a correction reason of 1 to 2000 characters.` });
+    return;
+  }
+
   const previousScore = submission.score;
-  submission.score = Math.min(submission.maxScore, Math.max(0, Number(score)));
-  submission.adminOverrideNotes = adminNotes || 'Score adjusted by administrator.';
+  const correctedScore = validatedEdit.score;
+  if (submission.originalScore === undefined) submission.originalScore = previousScore;
+  submission.score = correctedScore;
+  submission.adminOverrideNotes = validatedEdit.reason;
   submission.evaluatedBy = 'admin';
 
   // Update participant's highest score
   const participant = db.roundParticipants.find((p) => p.roundId === submission.roundId && p.studentId === submission.studentId);
   if (participant) {
     const allSubs = db.submissions.filter((s) => s.roundId === submission.roundId && s.studentId === submission.studentId);
-    const bestSubmission = [...allSubs].sort((a, b) => (b.score || 0) - (a.score || 0))[0];
-    participant.highestScore = Math.max(...allSubs.map((s) => s.score || 0));
+    const bestSubmission = [...allSubs].sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0];
+    participant.highestScore = highestSubmissionScore(allSubs);
     participant.finalScore = participant.highestScore;
-    if (bestSubmission?.scoringBreakdown) {
-      participant.scoringBreakdown = bestSubmission.scoringBreakdown;
-      participant.promptQualityScore = bestSubmission.scoringBreakdown.promptQualityScore;
-      participant.taskAchievementScore = bestSubmission.scoringBreakdown.taskAchievementScore;
-    }
+    participant.scoringBreakdown = bestSubmission?.scoringBreakdown;
+    participant.promptQualityScore = bestSubmission?.scoringBreakdown?.promptQualityScore ?? null;
+    participant.taskAchievementScore = bestSubmission?.scoringBreakdown?.taskAchievementScore ?? null;
   }
 
   db.logAudit(
     req.user!.id,
     req.user!.username,
     'admin',
-    'SCORE_OVERRIDDEN',
+    'RESULT_MANUALLY_EDITED',
     'SUBMISSION',
     submission.id,
-    `Admin updated score from ${previousScore} to ${submission.score} for ${submission.studentName}`
+    JSON.stringify(resultEditAuditDetails({
+      adminIdentifier: req.user!.id,
+      adminUsername: req.user!.username,
+      participantIdentifier: submission.studentId,
+      roundId: submission.roundId,
+      submissionId: submission.id,
+      oldValue: previousScore,
+      newValue: submission.score,
+      reason: validatedEdit.reason,
+    }))
   );
 
   db.save();

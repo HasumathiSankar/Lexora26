@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build",
-    "test": "tsx --test src/server/scoring.test.ts",
+    "test": "tsx --test src/server/scoring.test.ts src/server/resultEdits.test.ts src/lib/istDateFilter.test.ts",
     "start": "tsx server.ts",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
